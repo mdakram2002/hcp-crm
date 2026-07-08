@@ -1,184 +1,198 @@
 # AI-First CRM — HCP Module: Log Interaction Screen
 
-A field-rep can log an HCP (Healthcare Professional) interaction in two ways on the
-same screen:
+This project implements an AI-first CRM system for Healthcare Professional (HCP) interaction logging, as required for the Round 1 Interview Assignment.
 
-1. **Structured form** (left panel) — the classic CRM fields.
-2. **Conversational AI Assistant** (right panel) — describe what happened in plain
-   English (or paste/dictate a voice-note transcript), and a **LangGraph agent**
-   running on **Groq (`gemma2-9b-it`)** extracts the details, calls the right tool(s),
-   and **fills / edits the left-hand form for you**. The rep never has to click into
-   the form fields by hand for the AI-driven flow — that's the whole point of the
-   assignment.
+## Overview
 
-```
-┌─────────────────────────────┐   ┌───────────────────────────┐
-│  Interaction Details (form) │   │   AI Assistant (chat)     │
-│  HCP Name, Date, Time,      │◄──┤   "Met Dr. Smith, positive│
-│  Topics, Materials,         │   │    sentiment, shared      │
-│  Sentiment, Outcomes,       │   │    brochure"              │
-│  Follow-ups ...             │   │                           │
-└─────────────────────────────┘   └───────────────────────────┘
-        Redux store  ◄──────────────  field_updates from agent
-```
+Field representatives can log HCP interactions in two ways on the same screen:
 
-## Tech stack (per assignment spec)
+1. **Structured Form** (left panel) - Fill in HCP details, topics, materials, sentiment, and follow-ups.
+2. **AI Assistant Chat** (right panel) - Describe the interaction in plain English, and the AI extracts and fills the form automatically.
 
-| Layer        | Choice                                                        |
-|--------------|----------------------------------------------------------------|
-| Frontend     | React 18 + Redux Toolkit, Vite, Google **Inter** font          |
-| Backend      | Python **FastAPI**                                              |
-| Agent        | **LangGraph** (`StateGraph` + `ToolNode`)                        |
-| LLM          | **Groq** — `gemma2-9b-it` for extraction/tool-routing, `llama-3.3-70b-versatile` for longer free-text generation (voice-note summarization, follow-up suggestions) |
-| Database     | Postgres (SQLAlchemy models; MySQL works too by swapping the URL) |
+## Tech Stack
 
-## How the AI actually drives the form
+| Component | Technology |
+|-----------|------------|
+| Frontend | React 18, Redux Toolkit, Vite, Google Inter Font |
+| Backend | Python FastAPI |
+| AI Agent | LangGraph |
+| LLM | Groq (llama-3.3-70b-versatile) |
+| Database | PostgreSQL |
 
-1. The React chat panel POSTs `{ session_id, message }` to `POST /api/chat`.
-2. The FastAPI route pushes the message into the conversation history and invokes
-   the compiled **LangGraph** graph (`app/agent/graph.py`):
-   - `agent` node — Groq LLM with all 5 tools bound (`llm.bind_tools(TOOLS)`) decides
-     which tool(s) to call, with what arguments, based on the system prompt + message.
-   - `tools` node — a LangGraph `ToolNode` executes the chosen tool(s) against the
-     Postgres draft record for that `session_id`.
-   - The graph loops `agent → tools → agent` until the LLM responds with no more
-     tool calls, then ends.
-3. Each tool returns a small JSON payload `{ message, field_updates }`. The FastAPI
-   route merges every tool's `field_updates` and returns them alongside the
-   assistant's natural-language reply.
-4. The frontend dispatches `mergeFields(field_updates)` into the `interaction` Redux
-   slice — **this is the only code path that changes form values in the AI-driven
-   flow.** The manual `<input>`/`<textarea>` `onChange` handlers exist only to satisfy
-   the "structured form" fallback the spec asks for; they are not used by the agent.
+## Key Features
 
-## The 5 LangGraph tools
+- **Dual Input Methods**: Use either the structured form or chat interface
+- **AI-Powered Form Filling**: Describe interactions naturally, AI extracts and fills fields
+- **Edit Capability**: Correct any field by simply telling the AI
+- **5 LangGraph Tools**: Log Interaction, Edit Interaction, Summarize Voice Note, Manage Materials/Samples, Suggest Follow-ups
 
-The LangGraph agent's job is to sit between unstructured rep speech and the
-structured CRM schema: on every message it must decide *which* CRM operation the
-rep means, extract the right slots, and leave everything else on the form alone.
-That's implemented as 5 tools (`app/agent/tools.py`):
+## How It Works
 
-1. **`log_interaction`** — First-time extraction. Given a free-text description
-   ("Today I met with Dr. Smith and discussed Product X efficiency. The sentiment
-   was positive, and I shared the brochures."), the LLM extracts `hcp_name`,
-   `interaction_type`, `date`, `sentiment`, `materials_shared`, etc., and the tool
-   writes them onto a new draft `Interaction` row keyed by `session_id`.
-2. **`edit_interaction`** — Same schema as above, but used for corrections
-   ("Sorry, the name was actually Dr. John, and the sentiment was negative").
-   Only the fields the LLM actually extracts are non-null, so `apply_updates()`
-   patches *just those* columns and leaves the rest of the draft untouched.
-3. **`summarize_voice_note`** — Mirrors the "Summarize from Voice Note" button.
-   Takes a longer dictated transcript, asks the larger Groq model
-   (`llama-3.3-70b-versatile`) to condense it into `topics_discussed` +
-   `outcomes`, and writes those back.
-4. **`manage_materials_samples`** — Mirrors the "Search/Add" and "Add Sample"
-   controls. Searches a seeded catalog of marketing materials & drug samples and
-   adds/removes matches from `materials_shared` / `samples_distributed`.
-5. **`suggest_follow_ups`** — Mirrors the "AI Suggested Follow-ups" list. Looks at
-   everything logged so far (topics, sentiment, outcomes) and asks the LLM to
-   propose 2–4 concrete next steps, which appear as clickable suggestions the rep
-   can promote into `follow_up_actions` with one click.
+1. User types a message in the chat panel
+2. Message is sent to FastAPI backend
+3. LangGraph agent processes the message using Groq LLM
+4. Agent calls appropriate tool(s) based on the intent
+5. Tool extracts information and updates the form
+6. Form updates automatically without manual input
 
-All 5 tools are declared with Pydantic `args_schema`s and bound to the Groq model
-via `llm.bind_tools(...)`, then executed through LangGraph's `ToolNode` — nothing
-is hard-coded string matching; the LLM decides which tool(s) to call and with what
-arguments on every turn.
+## The 5 LangGraph Tools
 
-## Project structure
+| Tool | Purpose |
+|------|---------|
+| **Log Interaction** | Extract HCP details from natural language and create a new interaction record |
+| **Edit Interaction** | Modify only the fields mentioned in the correction |
+| **Summarize Voice Note** | Condense voice transcripts into topics and outcomes |
+| **Manage Materials/Samples** | Search and add/remove materials and samples from the catalog |
+| **Suggest Follow-ups** | Generate AI-powered follow-up recommendations |
 
-```
-hcp-crm/
-├── backend/
-│   ├── app/
-│   │   ├── main.py            # FastAPI app, CORS, startup DB init
-│   │   ├── config.py          # env-based settings (Groq key/model, DB url)
-│   │   ├── database.py        # SQLAlchemy engine/session + seed data
-│   │   ├── models.py          # Interaction, Material tables
-│   │   ├── schemas.py         # Pydantic request/response models
-│   │   ├── crud.py            # draft get/create/update helpers
-│   │   ├── agent/
-│   │   │   ├── llm.py         # ChatGroq instances
-│   │   │   ├── tools.py       # the 5 LangGraph tools
-│   │   │   ├── graph.py       # StateGraph wiring (agent <-> tools loop)
-│   │   │   └── context.py     # contextvars: session_id, field_updates
-│   │   └── routers/
-│   │       ├── chat.py        # POST /api/chat  (drives the agent)
-│   │       └── interactions.py# GET/POST draft, finalize, materials search
-│   ├── requirements.txt
-│   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── LogInteractionPage.jsx   # split layout + Save button
-│   │   │   ├── InteractionForm.jsx      # left panel (replica of screenshot)
-│   │   │   └── AIAssistantPanel.jsx     # right panel, calls /api/chat
-│   │   ├── store/
-│   │   │   ├── store.js
-│   │   │   ├── interactionSlice.js      # mergeFields() = AI writes here
-│   │   │   └── chatSlice.js
-│   │   └── api/client.js
-│   └── package.json
-└── docker-compose.yml         # local Postgres
-```
+## Installation & Setup
 
-## Running it locally
+### Prerequisites
 
-### 1. Database
+- Python 3.10+
+- Node.js 18+
+- Docker (for PostgreSQL)
+- Groq API Key (get from console.groq.com)
+
+### Step 1: Clone and Setup Database
+
 ```bash
-docker compose up -d          # starts Postgres on localhost:5432
+cd hcp-crm
+docker compose up -d
 ```
-(Or point `DATABASE_URL` at any existing MySQL/Postgres instance.)
 
-### 2. Backend
+### Step 2: Backend Setup
+
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+python -m venv venv
+venv\Scripts\activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
-# edit .env and paste your Groq API key from https://console.groq.com/keys
+```
+
+Edit `.env` and add your Groq API key:
+
+```text
+GROQ_API_KEY=your_groq_api_key_here
+DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5433/hcp_crm
+GROQ_MODEL=llama-3.3-70b-versatile
+FRONTEND_ORIGIN=http://localhost:5173
+```
+
+Start the backend:
+
+```bash
 uvicorn app.main:app --reload --port 8000
 ```
-Tables and seed catalog data (materials/samples) are created automatically on
-startup. Docs at `http://localhost:8000/docs`.
 
-### 3. Frontend
+### Step 3: Frontend Setup
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open `http://localhost:5173`.
 
-## Trying the two required flows
+### Step 4: Access the Application
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+## Testing the AI Assistant
+
+Try these example prompts:
 
 **Log Interaction:**
-> "Today I met with Dr. Smith and discussed Product X efficacy. The sentiment was
-> positive, and I shared the brochures."
-
-→ the agent calls `log_interaction` (+ `manage_materials_samples` for the
-brochure), and HCP Name, Date, Sentiment, and Materials Shared populate on the
-left instantly.
+```text
+Today I met with Dr. Smith and discussed Product X efficacy. The sentiment was positive, and I shared the OncoBoost brochure.
+```
 
 **Edit Interaction:**
-> "Sorry, the name was actually Dr. John, and the sentiment was negative."
+```text
+Sorry, the name was actually Dr. John, and the sentiment was negative.
+```
 
-→ the agent calls `edit_interaction` with only `hcp_name` and `sentiment` set;
-every other field on the form is left exactly as it was.
+**Summarize Voice Note:**
+```text
+Summarize this: "Called Dr. Patel. Good patient outcomes. Requested more materials. Follow up next month."
+```
 
-**Other 3 tools:**
-- Paste a longer note and say "summarize this voice note: ..." → `summarize_voice_note`.
-- "Add the CardioPlus sample pack I gave him" → `manage_materials_samples`.
-- "What should I follow up on?" → `suggest_follow_ups`.
+**Manage Materials:**
+```text
+Add OncoBoost and ImmunoPlus to the materials list.
+```
 
-## Notes / assumptions
+**Suggest Follow-ups:**
+```text
+Suggest follow-ups for Dr. Smith.
+```
 
-- Conversation history and the in-progress draft are keyed by a `session_id`
-  generated client-side and stored in `sessionStorage`, so refreshing the tab keeps
-  the same in-progress log.
-- Conversation history is kept in-memory per backend process for this demo
-  (`_CONVERSATIONS` dict in `routers/chat.py`); swap for Redis/DB for production.
-- "Save Interaction" (top-right button) marks the draft `status = "logged"` via
-  `POST /api/interactions/finalize` — a plain REST action, not a LangGraph tool,
-  since finalizing isn't itself a natural-language operation the rep describes.
-#   h c p - c r m  
- 
+## Project Structure
+
+```text
+hcp-crm/
+├── backend/
+│   ├── app/
+│   │   ├── agent/
+│   │   │   ├── graph.py      # LangGraph workflow
+│   │   │   ├── llm.py        # Groq configuration
+│   │   │   └── tools.py      # 5 LangGraph tools
+│   │   ├── routers/
+│   │   │   ├── chat.py       # Chat endpoint
+│   │   │   └── interactions.py
+│   │   ├── config.py
+│   │   ├── database.py
+│   │   ├── main.py
+│   │   ├── models.py
+│   │   └── schemas.py
+│   ├── requirements.txt
+│   └── .env.example
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── store/             # Redux state management
+│   │   └── api/
+│   └── package.json
+└── docker-compose.yml
+```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/chat` | POST | Send message to AI assistant |
+| `/api/chat/reset` | POST | Reset conversation |
+| `/api/interactions/draft` | GET | Get current draft |
+| `/api/interactions/finalize` | POST | Save the interaction |
+
+## Demo Video Requirements
+
+For the video submission (10-15 minutes), demonstrate:
+
+- Frontend walkthrough showing the split-screen layout
+- All 5 LangGraph tools working:
+  - Log Interaction
+  - Edit Interaction
+  - Summarize Voice Note
+  - Manage Materials/Samples
+  - Suggest Follow-ups
+- Code explanation and project structure overview
+- Summary of understanding the task
+
+## Submission Checklist
+
+- [ ] GitHub repository with frontend and backend code
+- [ ] README.md explaining project and setup
+- [ ] Video recording (10-15 minutes)
+- [ ] All 5 LangGraph tools implemented
+- [ ] Both form and chat interfaces working
+
+## Notes
+
+- The `gemma2-9b-it` model has been decommissioned by Groq; this project uses `llama-3.3-70b-versatile` instead
+- Conversation history is stored in-memory for the demo (replace with Redis/DB for production)
+- "Save Interaction" button saves the draft via REST API (not a LangGraph tool)
+
+## License
+
+This project was created for the Round 1 Interview Assignment.
