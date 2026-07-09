@@ -29,9 +29,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* --- Fixed-height page shell: no more page growing, each panel fills the screen --- */
 .app-shell {
-  min-height: 100vh;
-  padding: 20px 24px 32px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 20px;
+  overflow: hidden;
 }
 
 .page-title {
@@ -39,18 +43,23 @@ body {
   font-weight: 700;
   margin: 0 0 16px 2px;
   letter-spacing: -0.01em;
+  flex-shrink: 0;
 }
 
 .split-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
 @media (max-width: 900px) {
   .split-layout {
     grid-template-columns: 1fr;
+    height: auto;
+    overflow-y: auto;
   }
 }
 
@@ -59,6 +68,11 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .panel-header {
@@ -69,6 +83,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .panel-header .subtitle {
@@ -83,6 +98,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .form-row {
@@ -268,29 +286,51 @@ body {
 
 .suggested-followups ul {
   margin: 0;
-  padding-left: 18px;
+  padding-left: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.suggested-followups a {
+.suggested-followups .hint {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 11.5px;
+}
+
+.follow-up-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
   color: var(--accent);
   text-decoration: none;
   cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  text-align: left;
+  display: inline;
 }
 
-.suggested-followups a:hover {
+.follow-up-link:hover {
   text-decoration: underline;
 }
 
-/* --- AI assistant panel --- */
+.follow-up-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* --- AI assistant panel: fills the fixed-height layout, internal scroll only --- */
 
 .ai-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 560px;
+  min-height: 0;
 }
 
 .ai-panel .panel-header {
@@ -303,12 +343,12 @@ body {
 
 .chat-scroll {
   flex: 1;
+  min-height: 0;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
-  max-height: 480px;
 }
 
 .chat-bubble {
@@ -350,6 +390,7 @@ body {
   gap: 8px;
   padding: 14px;
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .chat-input-row input {

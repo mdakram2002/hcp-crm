@@ -22,16 +22,12 @@ export default function InteractionForm() {
 
   const update = (field, value) => dispatch(setField({ field, value }))
 
-  const handleFollowUpClick = (followUp) => {
-    // Add the follow-up to the Follow-up Actions field
-    const currentActions = form.follow_up_actions || []
-    if (!currentActions.includes(followUp)) {
-      dispatch(setField({ 
-        field: 'follow_up_actions', 
-        value: [...currentActions, followUp] 
-      }))
-    }
+const handleFollowUpClick = (followUp) => {
+  const currentActions = form.follow_up_actions || []
+  if (!currentActions.includes(followUp)) {
+    dispatch(setField({ field: 'follow_up_actions', value: [...currentActions, followUp] }))
   }
+}
 
   return (
     <div className="panel">

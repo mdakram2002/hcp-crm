@@ -23,16 +23,32 @@ def get_or_create_draft(db: Session, session_id: str) -> Interaction:
     return draft
 
 
+# These fields represent cumulative lists (things added over the course of a
+# conversation), so an update should ADD to what's already there rather than
+# replace it wholesale. Without this, e.g. clicking one "AI Suggested Follow-up"
+# would wipe out every other follow-up action already on the form, and a second
+# "attendees" mention would erase the first attendee.
+LIST_MERGE_FIELDS = {"attendees", "materials_shared", "samples_distributed", "follow_up_actions"}
+
+
 def apply_updates(db: Session, draft: Interaction, updates: dict) -> dict:
-    """Apply a dict of non-null field updates to a draft, return only what changed."""
+    """Apply a dict of non-null field updates to a draft, return only what changed.
+    List-type fields in LIST_MERGE_FIELDS are merged (existing + new, de-duplicated,
+    order preserved) instead of overwritten."""
     applied = {}
     for key, value in updates.items():
         if value is None:
             continue
         if not hasattr(draft, key):
             continue
-        setattr(draft, key, value)
-        applied[key] = value
+        if key in LIST_MERGE_FIELDS and isinstance(value, list):
+            existing = list(getattr(draft, key) or [])
+            merged = existing + [v for v in value if v not in existing]
+            setattr(draft, key, merged)
+            applied[key] = merged
+        else:
+            setattr(draft, key, value)
+            applied[key] = value
     db.add(draft)
     db.commit()
     db.refresh(draft)
