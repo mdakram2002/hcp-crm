@@ -1,5 +1,6 @@
 from langchain_groq import ChatGroq
-from ..config import settings
+
+from app.core.config import settings
 
 # Primary model - use a supported model
 llm = ChatGroq(

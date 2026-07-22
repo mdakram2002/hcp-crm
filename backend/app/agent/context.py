@@ -12,3 +12,8 @@ session_id_ctx: contextvars.ContextVar[str] = contextvars.ContextVar(
 field_updates_ctx: contextvars.ContextVar[dict] = contextvars.ContextVar(
     "field_updates_ctx", default={}
 )
+
+# Holds the current authenticated user id for the duration of a single request.
+user_id_ctx: contextvars.ContextVar[int | None] = contextvars.ContextVar(
+    "user_id_ctx", default=None
+)

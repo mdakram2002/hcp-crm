@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-from .api.v1.endpoints.config import settings
+from .config import settings
 
 engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -22,10 +22,13 @@ def init_db():
     with engine.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
 
-    from .models import models  # noqa: F401
+    from app import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
-    from .models.models import HCP, Material, User
+    from app.models.material import Material
+    from app.models.user import User
+    from app.models.hcp import HCP
+
     db = SessionLocal()
     try:
         if db.query(Material).count() == 0:

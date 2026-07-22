@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { setField, addFollowUpAction } from '../store/interactionSlice'
+import { searchHcps } from '../api/client'
 
 const SENTIMENTS = [
   { value: 'Positive', emoji: '🙂' },
@@ -19,15 +21,60 @@ function Field({ label, children }) {
 export default function InteractionForm() {
   const form = useSelector((state) => state.interaction)
   const dispatch = useDispatch()
+  const [hcpQuery, setHcpQuery] = useState(form.hcp_name || '')
+  const [hcpOptions, setHcpOptions] = useState([])
+  const [showHcpOptions, setShowHcpOptions] = useState(false)
 
   const update = (field, value) => dispatch(setField({ field, value }))
 
-const handleFollowUpClick = (followUp) => {
-  const currentActions = form.follow_up_actions || []
-  if (!currentActions.includes(followUp)) {
-    dispatch(setField({ field: 'follow_up_actions', value: [...currentActions, followUp] }))
+  const handleFollowUpClick = (followUp) => {
+    const currentActions = form.follow_up_actions || []
+    if (!currentActions.includes(followUp)) {
+      dispatch(setField({ field: 'follow_up_actions', value: [...currentActions, followUp] }))
+    }
   }
-}
+
+  useEffect(() => {
+    setHcpQuery(form.hcp_name || '')
+  }, [form.hcp_name])
+
+  useEffect(() => {
+    if (!hcpQuery.trim()) {
+      setHcpOptions([])
+      setShowHcpOptions(false)
+      return
+    }
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        const results = await searchHcps(hcpQuery)
+        setHcpOptions(results || [])
+        setShowHcpOptions(true)
+      } catch (error) {
+        setHcpOptions([])
+        setShowHcpOptions(false)
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
+  }, [hcpQuery])
+
+  const handleHcpSelect = (option) => {
+    setHcpQuery(option.name)
+    update('hcp_name', option.name)
+    update('hcp_id', option.id)
+    setShowHcpOptions(false)
+  }
+
+  const handleHcpInputChange = (value) => {
+    setHcpQuery(value)
+    update('hcp_name', value)
+    if (!value.trim()) {
+      update('hcp_id', null)
+    }
+  }
+
+  const inputClassName = useMemo(() => (showHcpOptions && hcpOptions.length > 0 ? 'autocomplete-open' : ''), [showHcpOptions, hcpOptions.length])
 
   return (
     <div className="panel">
@@ -35,12 +82,33 @@ const handleFollowUpClick = (followUp) => {
       <div className="form-body">
         <div className="form-row">
           <Field label="HCP Name">
-            <input
-              type="text"
-              placeholder="Search or select HCP..."
-              value={form.hcp_name}
-              onChange={(e) => update('hcp_name', e.target.value)}
-            />
+            <div className="autocomplete-wrap">
+              <input
+                type="text"
+                className={inputClassName}
+                placeholder="Search or select HCP..."
+                value={hcpQuery}
+                onChange={(e) => handleHcpInputChange(e.target.value)}
+                onFocus={() => hcpQuery.trim() && setShowHcpOptions(true)}
+                onBlur={() => window.setTimeout(() => setShowHcpOptions(false), 120)}
+              />
+              {showHcpOptions && hcpOptions.length > 0 && (
+                <div className="autocomplete-list">
+                  {hcpOptions.map((option) => (
+                    <button
+                      type="button"
+                      className="autocomplete-item"
+                      key={option.id}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleHcpSelect(option)}
+                    >
+                      <span>{option.name}</span>
+                      {option.institution && <small>{option.institution}</small>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </Field>
           <Field label="Interaction Type">
             <div className="select-wrap">

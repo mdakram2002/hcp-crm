@@ -13,11 +13,15 @@ from typing import List, Optional
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
-from ..database import SessionLocal
-from .. import crud
-from .context import session_id_ctx
+from app.core.database import SessionLocal
+from app.crud import hcp as hcp_crud
+from app.crud import interaction as interaction_crud
+from app.models.interaction import Interaction
+from .context import session_id_ctx, user_id_ctx
 from .llm import llm_large
+from .embeddings import embed_text
 
 
 def _db():
@@ -69,7 +73,7 @@ def log_interaction(
     session_id = session_id_ctx.get()
     db = _db()
     try:
-        draft = crud.get_or_create_draft(db, session_id)
+        draft = interaction_crud.get_or_create_draft(db, session_id, user_id=user_id_ctx.get())
         updates = {
             "hcp_name": hcp_name,
             "interaction_type": interaction_type,
@@ -83,7 +87,7 @@ def log_interaction(
             "outcomes": outcomes,
             "follow_up_actions": follow_up_actions,
         }
-        applied = crud.apply_updates(db, draft, updates)
+        applied = interaction_crud.apply_updates(db, draft, updates)
         msg = f"Logged interaction. Filled fields: {', '.join(applied.keys()) or 'none detected'}."
         return _result(msg, applied)
     finally:
@@ -118,7 +122,7 @@ def edit_interaction(
     session_id = session_id_ctx.get()
     db = _db()
     try:
-        draft = crud.get_or_create_draft(db, session_id)
+        draft = interaction_crud.get_or_create_draft(db, session_id, user_id=user_id_ctx.get())
         updates = {
             "hcp_name": hcp_name,
             "interaction_type": interaction_type,
@@ -132,7 +136,7 @@ def edit_interaction(
             "outcomes": outcomes,
             "follow_up_actions": follow_up_actions,
         }
-        applied = crud.apply_updates(db, draft, updates)
+        applied = interaction_crud.apply_updates(db, draft, updates)
         msg = f"Updated: {', '.join(applied.keys()) or 'nothing changed'}."
         return _result(msg, applied)
     finally:
@@ -172,12 +176,12 @@ def summarize_voice_note(transcript: str) -> str:
 
     db = _db()
     try:
-        draft = crud.get_or_create_draft(db, session_id)
+        draft = interaction_crud.get_or_create_draft(db, session_id, user_id=user_id_ctx.get())
         updates = {
             "topics_discussed": parsed.get("topics_discussed"),
             "outcomes": parsed.get("outcomes") or None,
         }
-        applied = crud.apply_updates(db, draft, updates)
+        applied = interaction_crud.apply_updates(db, draft, updates)
         return _result("Summarized voice note into Topics Discussed / Outcomes.", applied)
     finally:
         db.close()
@@ -201,8 +205,8 @@ def manage_materials_samples(action: str, item_type: str, query: str) -> str:
     session_id = session_id_ctx.get()
     db = _db()
     try:
-        matches = crud.search_materials(db, query, item_type)
-        draft = crud.get_or_create_draft(db, session_id)
+        matches = interaction_crud.search_materials(db, query, item_type)
+        draft = interaction_crud.get_or_create_draft(db, session_id, user_id=user_id_ctx.get())
         field = "materials_shared" if item_type == "material" else "samples_distributed"
         current: List[str] = list(getattr(draft, field) or [])
 
@@ -216,7 +220,7 @@ def manage_materials_samples(action: str, item_type: str, query: str) -> str:
         elif action == "remove":
             current = [c for c in current if c != name]
 
-        applied = crud.apply_updates(db, draft, {field: current})
+        applied = interaction_crud.apply_updates(db, draft, {field: current})
         verb = "Added" if action == "add" else "Removed"
         return _result(f"{verb} '{name}' to/from {field.replace('_', ' ')}.", applied)
     finally:
@@ -224,7 +228,99 @@ def manage_materials_samples(action: str, item_type: str, query: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Tool 5: suggest_follow_ups
+# Tool 5: search_hcp
+# ---------------------------------------------------------------------------
+class SearchHcpArgs(BaseModel):
+    query: str = Field(..., description="Partial name of the HCP to look up")
+
+
+@tool("search_hcp", args_schema=SearchHcpArgs)
+def search_hcp(query: str) -> str:
+    """Look up existing HCPs by partial name match and report the matches back to the rep."""
+    db = _db()
+    try:
+        matches = hcp_crud.search_hcps(db, query)
+        if not matches:
+            return _result(f"No HCP found matching '{query}'.", {})
+        names = ", ".join(match.name for match in matches[:5])
+        return _result(f"Found HCP matches: {names}", {})
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Tool 6: search_past_interactions
+# ---------------------------------------------------------------------------
+class SearchPastInteractionsArgs(BaseModel):
+    hcp_name: Optional[str] = Field(None, description="Optional HCP name to limit the search")
+    query: str = Field(..., description="Natural-language question about a past interaction")
+
+
+@tool("search_past_interactions", args_schema=SearchPastInteractionsArgs)
+def search_past_interactions(hcp_name: Optional[str] = None, query: str = "") -> str:
+    """Search earlier interaction notes using semantic similarity and return the top matches as grounded context."""
+    db = _db()
+    try:
+        embedding = embed_text(query)
+        if not embedding:
+            return _result("No relevant past interaction notes found.", {})
+
+        base_query = db.query(Interaction)
+        if hcp_name:
+            base_query = base_query.filter(Interaction.hcp_name.ilike(f"%{hcp_name}%"))
+        matches = (
+            base_query.filter(Interaction.embedding.is_not(None))
+            .order_by(text("embedding <=> :embedding"))
+            .params(embedding=embedding)
+            .limit(3)
+            .all()
+        )
+
+        if not matches:
+            return _result("No relevant past interaction notes found.", {})
+
+        context = [
+            {
+                "date": match.date,
+                "hcp_name": match.hcp_name,
+                "topics_discussed": match.topics_discussed,
+                "outcomes": match.outcomes,
+            }
+            for match in matches
+        ]
+        return _result("Relevant past interaction notes: " + json.dumps(context), {})
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Tool 7: territory_summary
+# ---------------------------------------------------------------------------
+class TerritorySummaryArgs(BaseModel):
+    question: str = Field(..., description="Question about the team or territory performance")
+
+
+@tool("territory_summary", args_schema=TerritorySummaryArgs)
+def territory_summary(question: str) -> str:
+    """Answer questions about team / territory performance using the aggregated dashboard data."""
+    db = _db()
+    try:
+        summary = interaction_crud.get_dashboard_summary(db)
+        prompt = (
+            "You are a pharma sales manager assistant. Answer the user's question in a brief, natural-language update "
+            "based on the team summary below. Keep it concise and actionable.\n\n"
+            f"Question: {question}\n"
+            f"Summary: {json.dumps(summary)}"
+        )
+        resp = llm_large.invoke(prompt)
+        content = resp.content.strip()
+        return _result(content, {})
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Tool 8: suggest_follow_ups
 # ---------------------------------------------------------------------------
 class SuggestFollowUpsArgs(BaseModel):
     hint: Optional[str] = Field(
@@ -242,8 +338,8 @@ def suggest_follow_ups(hint: Optional[str] = None) -> str:
     session_id = session_id_ctx.get()
     db = _db()
     try:
-        draft = crud.get_or_create_draft(db, session_id)
-        context = crud.draft_to_dict(draft)
+        draft = interaction_crud.get_or_create_draft(db, session_id)
+        context = interaction_crud.draft_to_dict(draft)
         prompt = (
             "You are a pharma CRM co-pilot. Based on this logged HCP interaction, "
             "suggest 2 to 4 short, concrete follow-up actions for the sales rep "
@@ -264,7 +360,7 @@ def suggest_follow_ups(hint: Optional[str] = None) -> str:
         except Exception:
             suggestions = [line.strip("- ").strip() for line in content.split("\n") if line.strip()][:4]
 
-        applied = crud.apply_updates(db, draft, {"ai_suggested_follow_ups": suggestions})
+        applied = interaction_crud.apply_updates(db, draft, {"ai_suggested_follow_ups": suggestions})
         return _result("Generated AI suggested follow-ups.", applied)
     finally:
         db.close()
@@ -275,5 +371,8 @@ TOOLS = [
     edit_interaction,
     summarize_voice_note,
     manage_materials_samples,
+    search_hcp,
+    search_past_interactions,
+    territory_summary,
     suggest_follow_ups,
 ]

@@ -3,18 +3,19 @@ import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..database import get_db
-from ..crud import crud
-from ..models.models import Interaction, User
-from ..routers.auth import get_current_user
-from ..schemas.schemas import InteractionOut, FinalizeRequest
+from app.api.deps import get_current_user, get_db
+from app.crud.interaction import get_dashboard_summary, get_or_create_draft, apply_updates, search_materials
+from app.crud.hcp import find_or_create_hcp, search_hcps
+from app.models.interaction import Interaction
+from app.models.user import User
+from app.schemas.interaction import FinalizeRequest, InteractionOut
 
 router = APIRouter(prefix="/api", tags=["interactions"])
 
 
 @router.get("/interactions/draft", response_model=InteractionOut)
 def get_draft(session_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    draft = crud.get_or_create_draft(db, session_id)
+    draft = get_or_create_draft(db, session_id)
     if current_user.role == "rep" and draft.user_id not in {None, current_user.id}:
         raise HTTPException(status_code=403, detail="Not authorized")
     if draft.user_id is None:
@@ -27,13 +28,13 @@ def get_draft(session_id: str, db: Session = Depends(get_db), current_user: User
 
 @router.post("/interactions/finalize", response_model=InteractionOut)
 def finalize(req: FinalizeRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    draft = crud.get_or_create_draft(db, req.session_id)
+    draft = get_or_create_draft(db, req.session_id)
     if current_user.role == "rep" and draft.user_id not in {None, current_user.id}:
         raise HTTPException(status_code=403, detail="Not authorized")
     if draft.user_id is None:
         draft.user_id = current_user.id
     if draft.hcp_name and not draft.hcp_id:
-        hcp = crud.find_or_create_hcp(db, draft.hcp_name)
+        hcp = find_or_create_hcp(db, draft.hcp_name)
         draft.hcp_id = hcp.id
         draft.hcp_name = hcp.name
     draft.status = "logged"
@@ -42,12 +43,6 @@ def finalize(req: FinalizeRequest, db: Session = Depends(get_db), current_user: 
     db.commit()
     db.refresh(draft)
     return draft
-
-
-@router.get("/hcps/search")
-def search_hcps(q: str = "", db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    results = crud.search_hcps(db, q)
-    return [{"id": hcp.id, "name": hcp.name, "specialty": hcp.specialty, "institution": hcp.institution} for hcp in results]
 
 
 @router.get("/interactions", response_model=list[InteractionOut])
@@ -64,12 +59,7 @@ def list_interactions(db: Session = Depends(get_db), current_user: User = Depend
             "session_id": interaction.session_id,
             "hcp_name": interaction.hcp_name,
             "hcp_id": interaction.hcp_id,
-            "hcp": None if not hcp else {
-                "id": hcp.id,
-                "name": hcp.name,
-                "specialty": hcp.specialty,
-                "institution": hcp.institution,
-            },
+            "hcp": None if not hcp else {"id": hcp.id, "name": hcp.name, "specialty": hcp.specialty, "institution": hcp.institution},
             "interaction_type": interaction.interaction_type,
             "date": interaction.date,
             "time": interaction.time,
@@ -100,12 +90,7 @@ def list_all_interactions(db: Session = Depends(get_db), current_user: User = De
             "session_id": interaction.session_id,
             "hcp_name": interaction.hcp_name,
             "hcp_id": interaction.hcp_id,
-            "hcp": None if not hcp else {
-                "id": hcp.id,
-                "name": hcp.name,
-                "specialty": hcp.specialty,
-                "institution": hcp.institution,
-            },
+            "hcp": None if not hcp else {"id": hcp.id, "name": hcp.name, "specialty": hcp.specialty, "institution": hcp.institution},
             "interaction_type": interaction.interaction_type,
             "date": interaction.date,
             "time": interaction.time,
@@ -122,80 +107,7 @@ def list_all_interactions(db: Session = Depends(get_db), current_user: User = De
     return payload
 
 
-@router.get("/hcps/{hcp_id}")
-def get_hcp_profile(hcp_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from ..models.models import HCP
-
-    hcp = db.query(HCP).filter(HCP.id == hcp_id).first()
-    if not hcp:
-        raise HTTPException(status_code=404, detail="HCP not found")
-
-    interactions = (
-        db.query(Interaction)
-        .filter(Interaction.hcp_id == hcp_id)
-        .order_by(Interaction.date.desc(), Interaction.id.desc())
-        .all()
-    )
-    return {
-        "hcp": {
-            "id": hcp.id,
-            "name": hcp.name,
-            "specialty": hcp.specialty,
-            "institution": hcp.institution,
-            "email": hcp.email,
-            "phone": hcp.phone,
-        },
-        "interactions": [
-            {
-                "date": interaction.date,
-                "sentiment": interaction.sentiment,
-                "topics_discussed": interaction.topics_discussed,
-                "outcomes": interaction.outcomes,
-                "materials_shared": interaction.materials_shared or [],
-                "samples_distributed": interaction.samples_distributed or [],
-                "interaction_type": interaction.interaction_type,
-            }
-            for interaction in interactions
-        ],
-    }
-
-
-@router.get("/hcps/{hcp_id}/sentiment-trend")
-def get_hcp_sentiment_trend(hcp_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from ..models.models import HCP
-
-    hcp = db.query(HCP).filter(HCP.id == hcp_id).first()
-    if not hcp:
-        raise HTTPException(status_code=404, detail="HCP not found")
-
-    interactions = (
-        db.query(Interaction)
-        .filter(Interaction.hcp_id == hcp_id)
-        .order_by(Interaction.date.desc(), Interaction.id.desc())
-        .all()
-    )
-
-    trend = []
-    for interaction in interactions:
-        if not interaction.date:
-            continue
-        sentiment_value = 0
-        if interaction.sentiment == "Positive":
-            sentiment_value = 1
-        elif interaction.sentiment == "Negative":
-            sentiment_value = -1
-        trend.append({"date": interaction.date, "sentiment": sentiment_value})
-    return trend
-
-
-@router.get("/dashboard/summary")
-def dashboard_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role != "manager":
-        raise HTTPException(status_code=403, detail="Manager access required")
-    return crud.get_dashboard_summary(db)
-
-
 @router.get("/materials/search")
-def search_materials(q: str = "", item_type: str | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    results = crud.search_materials(db, q, item_type)
+def materials_search(q: str = "", item_type: str | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    results = search_materials(db, q, item_type)
     return [{"id": m.id, "name": m.name, "item_type": m.item_type} for m in results]

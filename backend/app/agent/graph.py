@@ -31,6 +31,9 @@ Guidelines:
   is already on the form, not replace it. The same applies to attendees.
 - If the rep asks you to summarize a voice note / dictated transcript, call
   summarize_voice_note with the full transcript text.
+- If the rep asks a question about a past interaction rather than describing a new one,
+  call search_past_interactions.
+- If the rep asks about team/territory performance, call territory_summary.
 - After tools run, reply with a brief, friendly confirmation of what you did.
   Never ask the rep to fill anything in manually - always do it via tools.
 """

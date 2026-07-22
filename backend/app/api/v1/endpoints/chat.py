@@ -1,18 +1,16 @@
 import json
 
 from fastapi import APIRouter, Depends
-from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from ..schemas.schemas import ChatRequest, ChatResponse
-from ..agent.graph import graph
-from ..agent.context import session_id_ctx, user_id_ctx
-from ..routers.auth import get_current_user
-from ..models.models import User
+from app.agent.context import session_id_ctx, user_id_ctx
+from app.agent.graph import graph
+from app.api.deps import get_current_user, get_db
+from app.models.user import User
+from app.schemas.chat import ChatRequest, ChatResponse
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
-# In-memory per-session chat history for this demo.
-# (Swap for a DB-backed store / Redis for production.)
 _CONVERSATIONS: dict = {}
 MAX_HISTORY = 20
 
@@ -28,7 +26,6 @@ def chat(req: ChatRequest, current_user: User = Depends(get_current_user)):
         result = graph.invoke({"messages": history})
         messages = result["messages"]
 
-        # Trim stored history so the context window doesn't grow unbounded.
         _CONVERSATIONS[req.session_id] = messages[-MAX_HISTORY:]
 
         field_updates: dict = {}

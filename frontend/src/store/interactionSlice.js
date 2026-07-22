@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
   hcp_name: '',
+  hcp_id: null,
   interaction_type: 'Meeting',
   date: new Date().toISOString().slice(0, 10),
   time: new Date().toTimeString().slice(0, 5),
