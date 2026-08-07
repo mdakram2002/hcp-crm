@@ -6,7 +6,7 @@ from app.api.v1.endpoints.interactions import router as interactions_router
 from app.api.v1.endpoints.hcps import router as hcps_router
 from app.api.v1.endpoints.dashboard import router as dashboard_router
 
-router = APIRouter(prefix="/api")
+router = APIRouter()
 router.include_router(auth_router)
 router.include_router(chat_router)
 router.include_router(interactions_router)

@@ -20,7 +20,11 @@ def get_db():
 def init_db():
     """Create tables and seed reference data if empty."""
     with engine.begin() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+        except Exception:
+            # pgvector extension not available; continue without it
+            pass
 
     from app import models  # noqa: F401
     Base.metadata.create_all(bind=engine)

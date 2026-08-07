@@ -1,8 +1,12 @@
 import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Text
-from sqlalchemy.dialects.postgresql import VECTOR
 from sqlalchemy.orm import relationship
+
+try:
+    from sqlalchemy.dialects.postgresql import VECTOR
+except ImportError:  # pragma: no cover - compatibility fallback for newer SQLAlchemy
+    from pgvector.sqlalchemy import Vector as VECTOR
 
 from app.core.database import Base
 

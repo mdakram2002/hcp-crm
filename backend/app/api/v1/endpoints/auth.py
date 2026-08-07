@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -6,7 +8,24 @@ from app.core.security import create_access_token, get_password_hash, verify_pas
 from app.models.user import User
 from app.schemas.user import LoginRequest, Token, UserCreate, UserOut
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/guest-login", response_model=Token)
+def guest_login(db: Session = Depends(get_db)):
+    guest_email = f"guest-{uuid4().hex[:10]}@local.test"
+    guest_password = f"guest-{uuid4().hex[:16]}"
+    guest_user = User(
+        email=guest_email,
+        hashed_password=get_password_hash(guest_password),
+        role="guest",
+    )
+    db.add(guest_user)
+    db.commit()
+    db.refresh(guest_user)
+
+    token = create_access_token({"sub": str(guest_user.id)})
+    return Token(access_token=token)
 
 
 @router.post("/register", response_model=Token)

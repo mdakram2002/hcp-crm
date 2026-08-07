@@ -59,6 +59,11 @@ export async function registerUser(payload) {
   return res.data
 }
 
+export async function loginAsGuest() {
+  const res = await api.post('/api/auth/guest-login')
+  return res.data
+}
+
 export async function fetchCurrentUser() {
   const res = await api.get('/api/auth/me')
   return res.data
