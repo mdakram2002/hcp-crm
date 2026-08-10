@@ -1,92 +1,105 @@
-# AI-First CRM — HCP Module: Log Interaction Screen
+# HCP CRM
 
-This project implements an AI-first CRM system for Healthcare Professional (HCP) interaction logging, as required for the Round 1 Interview Assignment.
+An AI-assisted customer relationship management application for logging and reviewing Healthcare Professional (HCP) interactions. Sales representatives can record an interaction in a structured form or describe it in natural language to an AI assistant. Managers receive a role-protected dashboard of team activity.
 
-## Overview
+## Features
 
-Field representatives can log HCP interactions in two ways on the same screen:
+- Secure JWT authentication with **rep**, **manager**, and guest access.
+- Interaction logging with HCP, date/time, attendees, discussion topics, materials, samples, sentiment, outcomes, and follow-up actions.
+- AI chat assistant powered by LangGraph and Groq to populate and amend the current interaction draft.
+- AI voice-note summarization and suggested follow-up actions.
+- HCP search/autocomplete, profile pages, interaction history, and sentiment-trend charts.
+- Manager dashboard with weekly/monthly activity, sentiment breakdown, material/sample usage, and inactive reps.
+- Semantic search of prior interaction notes using OpenAI embeddings and PostgreSQL `pgvector`.
 
-1. **Structured Form** (left panel) - Fill in HCP details, topics, materials, sentiment, and follow-ups.
-2. **AI Assistant Chat** (right panel) - Describe the interaction in plain English, and the AI extracts and fills the form automatically.
+## Technology
 
-## Tech Stack
+| Area | Tools |
+| --- | --- |
+| Frontend | React 18, Vite, Redux Toolkit, React Router, Axios, Recharts |
+| API | FastAPI, SQLAlchemy, Pydantic |
+| Database | PostgreSQL 16 with `pgvector` |
+| AI | LangGraph, LangChain, Groq (`llama-3.3-70b-versatile`) |
+| Semantic search | OpenAI `text-embedding-3-small` |
+| Authentication | JWT, bcrypt/passlib |
 
-| Component | Technology |
-|-----------|------------|
-| Frontend | React 18, Redux Toolkit, Vite, Google Inter Font |
-| Backend | Python FastAPI |
-| AI Agent | LangGraph |
-| LLM | Groq (llama-3.3-70b-versatile) |
-| Database | PostgreSQL |
+## Application flow
 
-## Key Features
+1. Register as a representative or manager, sign in, or use the guest-login option.
+2. On the log screen, enter interaction information directly or ask the AI assistant to extract it from a plain-language message.
+3. The agent updates the server-side draft and returns field updates for the Redux form state.
+4. Finalize the draft through the interaction API to persist it as a logged interaction. If the HCP does not exist, the API creates an HCP record.
+5. Logged interactions appear in the history table. Selecting an HCP opens their profile and sentiment trend.
+6. Managers can open the dashboard to review aggregate activity and attention items.
 
-- **Dual Input Methods**: Use either the structured form or chat interface
-- **AI-Powered Form Filling**: Describe interactions naturally, AI extracts and fills fields
-- **Edit Capability**: Correct any field by simply telling the AI
-- **5 LangGraph Tools**: Log Interaction, Edit Interaction, Summarize Voice Note, Manage Materials/Samples, Suggest Follow-ups
+## AI tools
 
-## How It Works
-
-1. User types a message in the chat panel
-2. Message is sent to FastAPI backend
-3. LangGraph agent processes the message using Groq LLM
-4. Agent calls appropriate tool(s) based on the intent
-5. Tool extracts information and updates the form
-6. Form updates automatically without manual input
-
-## The 5 LangGraph Tools
+The LangGraph agent has eight tools:
 
 | Tool | Purpose |
-|------|---------|
-| **Log Interaction** | Extract HCP details from natural language and create a new interaction record |
-| **Edit Interaction** | Modify only the fields mentioned in the correction |
-| **Summarize Voice Note** | Condense voice transcripts into topics and outcomes |
-| **Manage Materials/Samples** | Search and add/remove materials and samples from the catalog |
-| **Suggest Follow-ups** | Generate AI-powered follow-up recommendations |
+| --- | --- |
+| `log_interaction` | Creates or populates an interaction draft from a natural-language description. |
+| `edit_interaction` | Updates only the fields named in a correction. |
+| `summarize_voice_note` | Converts a dictated transcript into topics and outcomes. |
+| `manage_materials_samples` | Searches the catalog and adds or removes a material or sample. |
+| `search_hcp` | Looks up existing HCPs by partial name. |
+| `search_past_interactions` | Finds semantically similar prior notes. |
+| `territory_summary` | Answers questions using aggregate territory/dashboard data. |
+| `suggest_follow_ups` | Produces 2–4 suggested next actions for the current draft. |
 
-## Installation & Setup
+## Prerequisites
 
-### Prerequisites
+- Node.js 18 or later
+- Python 3.10 or later
+- Docker and Docker Compose
+- A [Groq API key](https://console.groq.com/)
+- An OpenAI API key if you want embeddings and semantic search enabled
 
-- Python 3.10+
-- Node.js 18+
-- Docker (for PostgreSQL)
-- Groq API Key (get from console.groq.com)
+## Run locally
 
-### Step 1: Clone and Setup Database
+### 1. Start PostgreSQL
+
+From the repository root:
 
 ```bash
-cd hcp-crm
 docker compose up -d
 ```
 
-### Step 2: Backend Setup
+The included Compose configuration starts PostgreSQL on `localhost:5433` using database `hcp_crm` and credentials `postgres` / `postgres`.
 
-```bash
+### 2. Configure and run the backend
+
+```powershell
 cd backend
-python -m venv venv
-venv\Scripts\activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-cp .env.example .env
 ```
 
-Edit `.env` and add your Groq API key:
+Create `backend/.env` with the following values:
 
-```text
-GROQ_API_KEY=your_groq_api_key_here
+```dotenv
 DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5433/hcp_crm
-GROQ_MODEL=llama-3.3-70b-versatile
 FRONTEND_ORIGIN=http://localhost:5173
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=llama-3.3-70b-versatile
+OPENAI_API_KEY=your_openai_api_key
+JWT_SECRET_KEY=replace-with-a-long-random-secret
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
-Start the backend:
+`OPENAI_API_KEY` is needed for embedding interaction notes and semantic retrieval. The application can still start without it, but those operations will not be available.
+
+Start the API:
 
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Step 3: Frontend Setup
+The health check is available at `http://localhost:8000/api/health`.
+
+### 3. Configure and run the frontend
 
 ```bash
 cd frontend
@@ -94,105 +107,93 @@ npm install
 npm run dev
 ```
 
-### Step 4: Access the Application
+Open `http://localhost:5173`.
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+To point the frontend at another API address, create `frontend/.env`:
 
-## Testing the AI Assistant
-
-Try these example prompts:
-
-**Log Interaction:**
-```text
-Today I met with Dr. Smith and discussed Product X efficacy. The sentiment was positive, and I shared the OncoBoost brochure.
+```dotenv
+VITE_API_BASE=http://localhost:8000
 ```
 
-**Edit Interaction:**
-```text
-Sorry, the name was actually Dr. John, and the sentiment was negative.
-```
+## Roles and access
 
-**Summarize Voice Note:**
-```text
-Summarize this: "Called Dr. Patel. Good patient outcomes. Requested more materials. Follow up next month."
-```
+| Role | Access |
+| --- | --- |
+| Guest | Can use the CRM through a newly created guest account. |
+| Rep | Can create and view their own interactions. |
+| Manager | Can access the team dashboard and all interactions endpoint. |
 
-**Manage Materials:**
-```text
-Add OncoBoost and ImmunoPlus to the materials list.
-```
+## API routes
 
-**Suggest Follow-ups:**
-```text
-Suggest follow-ups for Dr. Smith.
-```
+All routes below require a bearer token except registration, login, guest login, and health.
 
-## Project Structure
+| Route | Method | Description |
+| --- | --- | --- |
+| `/api/health` | GET | API health check. |
+| `/api/auth/register` | POST | Register a rep or manager account. |
+| `/api/auth/login` | POST | Sign in and receive an access token. |
+| `/api/auth/guest-login` | POST | Create and sign in with a guest account. |
+| `/api/auth/me` | GET | Fetch the current user. |
+| `/api/api/chat` | POST | Send a message to the AI assistant. |
+| `/api/api/chat/reset` | POST | Clear the in-memory chat history for a session. |
+| `/api/api/interactions/draft` | GET | Fetch or create a draft by `session_id`. |
+| `/api/api/interactions/finalize` | POST | Finalize an interaction draft. |
+| `/api/api/interactions` | GET | List the current rep's interactions. |
+| `/api/api/interactions/all` | GET | List all interactions (manager only). |
+| `/api/api/materials/search` | GET | Search catalog materials or samples. |
+| `/api/api/hcps/search` | GET | Search HCPs. |
+| `/api/api/hcps/{hcp_id}` | GET | Get an HCP profile and history. |
+| `/api/api/hcps/{hcp_id}/sentiment-trend` | GET | Get HCP sentiment data for the chart. |
+| `/api/api/dashboard/summary` | GET | Get manager dashboard data. |
+
+> **Route-prefix note:** the current backend mounts the v1 router at `/api` and the interaction, chat, HCP, and dashboard endpoint modules also declare `/api`, so their effective server paths are `/api/api/...`. The frontend client currently requests `/api/...`; align one of these prefixes before using those features end-to-end.
+
+## Project structure
 
 ```text
 hcp-crm/
 ├── backend/
 │   ├── app/
-│   │   ├── agent/
-│   │   │   ├── graph.py      # LangGraph workflow
-│   │   │   ├── llm.py        # Groq configuration
-│   │   │   └── tools.py      # 5 LangGraph tools
-│   │   ├── routers/
-│   │   │   ├── chat.py       # Chat endpoint
-│   │   │   └── interactions.py
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   ├── main.py
-│   │   ├── models.py
-│   │   └── schemas.py
-│   ├── requirements.txt
-│   └── .env.example
+│   │   ├── agent/          # LangGraph graph, tools, LLM, embeddings
+│   │   ├── api/            # API router, dependencies, v1 endpoints
+│   │   ├── core/           # Configuration, database, security
+│   │   ├── crud/           # Database operations
+│   │   ├── models/         # SQLAlchemy entities
+│   │   ├── schemas/        # Request and response schemas
+│   │   └── main.py
+│   ├── tests/
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── store/             # Redux state management
-│   │   └── api/
+│   │   ├── api/            # Axios client
+│   │   ├── components/     # Auth, logging, dashboard, and HCP pages
+│   │   └── store/          # Redux slices
 │   └── package.json
-└── docker-compose.yml
+├── docker-compose.yml
+└── README.md
 ```
 
-## API Endpoints
+## Development checks
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/chat` | POST | Send message to AI assistant |
-| `/api/chat/reset` | POST | Reset conversation |
-| `/api/interactions/draft` | GET | Get current draft |
-| `/api/interactions/finalize` | POST | Save the interaction |
+Run the backend tests from `backend`:
 
-## Demo Video Requirements
+```bash
+pytest
+```
 
-For the video submission (10-15 minutes), demonstrate:
+Create a production frontend build from `frontend`:
 
-- Frontend walkthrough showing the split-screen layout
-- All 5 LangGraph tools working:
-  - Log Interaction
-  - Edit Interaction
-  - Summarize Voice Note
-  - Manage Materials/Samples
-  - Suggest Follow-ups
-- Code explanation and project structure overview
-- Summary of understanding the task
+```bash
+npm run build
+```
 
-## Submission Checklist
+## Current implementation notes
 
-- [ ] GitHub repository with frontend and backend code
-- [ ] README.md explaining project and setup
-- [ ] Video recording (10-15 minutes)
-- [ ] All 5 LangGraph tools implemented
-- [ ] Both form and chat interfaces working
-
-## Notes
-
-- The `gemma2-9b-it` model has been decommissioned by Groq; this project uses `llama-3.3-70b-versatile` instead
-- Conversation history is stored in-memory for the demo (replace with Redis/DB for production)
-- "Save Interaction" button saves the draft via REST API (not a LangGraph tool)
+- Chat history is held in the API process memory and is limited to the 20 most recent messages per session; it is not production-persistent.
+- Database tables are initialized at application startup.
+- The current frontend does not yet call the draft-finalization endpoint, so finalization must be invoked through the API until that UI control is added.
+- The visible “Summarize from Voice Note,” “Search/Add,” and “Add Sample” form buttons are presentational in the current frontend. The corresponding capabilities are exposed through the AI agent tools.
 
 ## License
 
-This project was created for the Round 1 Interview Assignment.
+This repository was created as an interview assignment.
