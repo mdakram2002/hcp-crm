@@ -32,9 +32,6 @@ def _result(message: str, field_updates: dict) -> str:
     return json.dumps({"message": message, "field_updates": field_updates})
 
 
-# ---------------------------------------------------------------------------
-# Tool 1: log_interaction
-# ---------------------------------------------------------------------------
 class LogInteractionArgs(BaseModel):
     hcp_name: Optional[str] = Field(None, description="Name of the healthcare professional, e.g. 'Dr. Smith'")
     interaction_type: Optional[str] = Field(
@@ -94,9 +91,7 @@ def log_interaction(
         db.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 2: edit_interaction
-# ---------------------------------------------------------------------------
+
 class EditInteractionArgs(LogInteractionArgs):
     pass
 
@@ -143,9 +138,7 @@ def edit_interaction(
         db.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 3: summarize_voice_note
-# ---------------------------------------------------------------------------
+
 class SummarizeVoiceNoteArgs(BaseModel):
     transcript: str = Field(..., description="Raw transcript/voice note text dictated by the rep")
 
@@ -187,9 +180,7 @@ def summarize_voice_note(transcript: str) -> str:
         db.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 4: manage_materials_samples
-# ---------------------------------------------------------------------------
+
 class ManageMaterialsArgs(BaseModel):
     action: str = Field(..., description="'add' or 'remove'")
     item_type: str = Field(..., description="'material' or 'sample'")
@@ -227,9 +218,7 @@ def manage_materials_samples(action: str, item_type: str, query: str) -> str:
         db.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 5: search_hcp
-# ---------------------------------------------------------------------------
+
 class SearchHcpArgs(BaseModel):
     query: str = Field(..., description="Partial name of the HCP to look up")
 
@@ -248,9 +237,6 @@ def search_hcp(query: str) -> str:
         db.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 6: search_past_interactions
-# ---------------------------------------------------------------------------
 class SearchPastInteractionsArgs(BaseModel):
     hcp_name: Optional[str] = Field(None, description="Optional HCP name to limit the search")
     query: str = Field(..., description="Natural-language question about a past interaction")
@@ -293,9 +279,7 @@ def search_past_interactions(hcp_name: Optional[str] = None, query: str = "") ->
         db.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 7: territory_summary
-# ---------------------------------------------------------------------------
+
 class TerritorySummaryArgs(BaseModel):
     question: str = Field(..., description="Question about the team or territory performance")
 
@@ -319,9 +303,7 @@ def territory_summary(question: str) -> str:
         db.close()
 
 
-# ---------------------------------------------------------------------------
-# Tool 8: suggest_follow_ups
-# ---------------------------------------------------------------------------
+
 class SuggestFollowUpsArgs(BaseModel):
     hint: Optional[str] = Field(
         None, description="Optional extra context from the rep about what kind of follow-up they want"
