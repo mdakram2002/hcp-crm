@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchInteractions } from '../api/client'
+import { fetchInteractions } from '../../api/client'
 
 function SentimentBadge({ value }) {
   const normalized = (value || 'Neutral').toLowerCase()

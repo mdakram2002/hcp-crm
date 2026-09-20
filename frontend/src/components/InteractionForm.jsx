@@ -77,9 +77,8 @@ export default function InteractionForm() {
   const inputClassName = useMemo(() => (showHcpOptions && hcpOptions.length > 0 ? 'autocomplete-open' : ''), [showHcpOptions, hcpOptions.length])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0 h-full overflow-hidden">
-      <div className="p-3.5 px-5 border-b border-gray-200 font-semibold text-sm flex items-center gap-2 flex-shrink-0">Interaction Details</div>
-      <div className="p-5 flex flex-col gap-4.5 overflow-y-auto flex-1 min-h-0">
+    <div className="h-full flex flex-col gap-3 overflow-hidden">
+      <div className="flex flex-col gap-3 overflow-y-auto pr-2">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
           <Field label="HCP Name">
             <div className="relative">

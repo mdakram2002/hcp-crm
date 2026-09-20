@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
-import { loginUser, loginAsGuest, fetchCurrentUser } from '../api/client'
-import { setAuth } from '../store/authSlice'
-import AuthLayout from './auth/AuthLayout'
-import AuthBrandPanel from './auth/AuthBrandPanel'
-import AuthInput from './auth/AuthInput'
-import PasswordInput from './auth/PasswordInput'
-import AuthDivider from './auth/AuthDivider'
+import { loginUser, loginAsGuest, fetchCurrentUser } from '../../api/client'
+import { setAuth } from '../../store/authSlice'
+import AuthLayout from './AuthLayout'
+import AuthBrandPanel from './AuthBrandPanel'
+import AuthInput from './AuthInput'
+import PasswordInput from './PasswordInput'
+import AuthDivider from './AuthDivider'
 
 export default function Login() {
   const [email, setEmail] = useState('')

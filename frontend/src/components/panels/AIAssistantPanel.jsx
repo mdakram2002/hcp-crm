@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { addMessage, setLoading } from '../store/chatSlice'
-import { mergeFields, setField } from '../store/interactionSlice'
-import { sendChatMessage } from '../api/client'
+import { addMessage, setLoading } from '../../store/chatSlice'
+import { mergeFields, setField } from '../../store/interactionSlice'
+import { sendChatMessage } from '../../api/client'
 
 export default function AIAssistantPanel({ sessionId }) {
   const [draft, setDraft] = useState('')
