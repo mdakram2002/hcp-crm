@@ -3,10 +3,18 @@ import { useDispatch } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { registerUser, loginAsGuest, fetchCurrentUser } from '../api/client'
 import { setAuth } from '../store/authSlice'
+import AuthLayout from './auth/AuthLayout'
+import AuthBrandPanel from './auth/AuthBrandPanel'
+import AuthInput from './auth/AuthInput'
+import PasswordInput from './auth/PasswordInput'
+import AuthDivider from './auth/AuthDivider'
+import { FiUser, FiChevronDown } from 'react-icons/fi'
 
 export default function Register() {
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [role, setRole] = useState('rep')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -16,6 +24,17 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const tokenData = await registerUser({ email, password, role })
@@ -49,37 +68,125 @@ export default function Register() {
   }
 
   return (
-    <div className="auth-shell">
-      <div className="panel auth-panel">
-        <div className="panel-header">Create account</div>
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="field">
-            <span>Email</span>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </label>
-          <label className="field">
-            <span>Password</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </label>
-          <label className="field">
-            <span>Role</span>
-            <select value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="rep">Rep</option>
-              <option value="manager">Manager</option>
-            </select>
-          </label>
-          {error && <div className="auth-error">{error}</div>}
-          <div className="auth-actions">
-            <button className="btn-primary" type="submit" disabled={isSubmitting}>Register</button>
-            <button className="btn-secondary" type="button" onClick={handleGuestLogin} disabled={isSubmitting}>Login as guest</button>
+    <AuthLayout>
+      <AuthBrandPanel />
+      <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
+        <div className="max-w-md mx-auto w-full">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h2>
+            <p className="text-gray-600">Join HCP CRM and get started</p>
           </div>
-          <div className="auth-divider">or</div>
-          <div className="auth-link-row">
-            <span>Already have an account?</span>
-            <Link to="/login">Sign in</Link>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name
+              </label>
+              <AuthInput
+                type="text"
+                placeholder="Enter your full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <AuthInput
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <PasswordInput
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm Password
+              </label>
+              <PasswordInput
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                error={confirmPassword && password !== confirmPassword ? 'Passwords do not match' : ''}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Role
+              </label>
+              <div className="relative">
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                >
+                  <option value="rep">Rep</option>
+                  <option value="manager">Manager</option>
+                </select>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiUser className="w-5 h-5 text-gray-400" />
+                </div>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <FiChevronDown className="w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSubmitting ? 'Creating account...' : 'Create Account'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGuestLogin}
+              disabled={isSubmitting}
+              className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSubmitting ? 'Signing in...' : 'Login as Guest'}
+            </button>
+          </form>
+
+          <AuthDivider text="Or continue with" />
+
+          <div className="text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{' '}
+              <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
+                Sign In
+              </Link>
+            </p>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }

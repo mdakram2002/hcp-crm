@@ -1,9 +1,10 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from .config import settings
 
-engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+# SQLite configuration for testing
+engine = create_engine(settings.DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -19,13 +20,6 @@ def get_db():
 
 def init_db():
     """Create tables and seed reference data if empty."""
-    with engine.begin() as conn:
-        try:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        except Exception:
-            # pgvector extension not available; continue without it
-            pass
-
     from app import models  # noqa: F401
     Base.metadata.create_all(bind=engine)
 

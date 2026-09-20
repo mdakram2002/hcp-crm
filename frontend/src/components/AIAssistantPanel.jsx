@@ -61,29 +61,29 @@ export default function AIAssistantPanel({ sessionId }) {
   }
 
   return (
-    <div className="panel ai-panel">
-      <div className="panel-header">
-        <span className="icon">🤖</span>
+    <div className="flex flex-col h-full min-h-0">
+      <div className="p-3.5 px-5 border-b border-gray-200 font-semibold text-sm flex items-center gap-2 flex-shrink-0 text-blue-600">
+        <span className="text-base">🤖</span>
         <div>
           AI Assistant
-          <span className="subtitle">Log interaction via chat</span>
+          <span className="text-gray-500 text-xs font-normal block">Log interaction via chat</span>
         </div>
       </div>
 
-      <div className="chat-scroll" ref={scrollRef}>
+      <div className="flex-1 min-h-0 p-4 flex flex-col gap-2.5 overflow-y-auto" ref={scrollRef}>
         {messages.length === 0 && (
           <div className="chat-placeholder">
             <p>Log interaction details here</p>
-            <p className="hint">(e.g., "Met Dr. Smith, discussed Product X efficacy, positive sentiment, shared brochure") or ask for help.</p>
+            <p className="text-gray-500 italic text-xs mt-2">(e.g., "Met Dr. Smith, discussed Product X efficacy, positive sentiment, shared brochure") or ask for help.</p>
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`chat-bubble ${m.role === 'user' ? 'user' : 'assistant'}`}>
+          <div key={i} className={`rounded-xl p-2.5 px-3.25 text-sm leading-relaxed max-w-[92%] ${m.role === 'user' ? 'bg-blue-600 text-white self-end rounded-tr-lg' : 'bg-blue-100 text-gray-900 self-start rounded-tl-lg'}`}>
             <div className="message-text">{m.text}</div>
             {m.tools && m.tools.length > 0 && (
               <div className="tool-tags">
                 {m.tools.map((t, j) => (
-                  <span className="tool-tag" key={j}>
+                  <span className="inline-block mt-1.5 text-xs font-bold tracking-wider text-blue-600 bg-white rounded-full px-2 py-0.5" key={j}>
                     🔧 {t}
                   </span>
                 ))}
@@ -92,26 +92,27 @@ export default function AIAssistantPanel({ sessionId }) {
           </div>
         ))}
         {isLoading && (
-          <div className="chat-bubble assistant">
-            <span className="typing-dots">
-              <span></span>
-              <span></span>
-              <span></span>
+          <div className="rounded-xl p-2.5 px-3.25 text-sm leading-relaxed max-w-[92%] bg-blue-100 text-gray-900 self-start rounded-tl-lg">
+            <span className="inline-flex gap-0.75">
+              <span className="w-1.25 h-1.25 rounded-full bg-blue-600 opacity-50 animate-blink"></span>
+              <span className="w-1.25 h-1.25 rounded-full bg-blue-600 opacity-50 animate-blink" style={{animationDelay: '0.2s'}}></span>
+              <span className="w-1.25 h-1.25 rounded-full bg-blue-600 opacity-50 animate-blink" style={{animationDelay: '0.4s'}}></span>
             </span>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input-row">
+      <div className="flex gap-2 p-3.5 border-t border-gray-200 flex-shrink-0">
         <input
           type="text"
+          className="flex-1 border border-gray-200 rounded-lg p-2.25 px-3 text-sm font-family"
           placeholder="Describe interaction..."
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
         />
-        <button className="btn-primary" onClick={handleSend} disabled={isLoading}>
+        <button className="bg-blue-600 text-white border-none rounded-lg p-2.25 px-4 text-xs font-bold cursor-pointer flex items-center gap-1.5 whitespace-nowrap disabled:opacity-55 disabled:cursor-not-allowed hover:bg-blue-700" onClick={handleSend} disabled={isLoading}>
           ➤ Log
         </button>
       </div>

@@ -41,50 +41,50 @@ export default function DashboardPage() {
   }, [summary])
 
   if (loading) {
-    return <div className="app-shell"><div className="profile-empty">Loading team insights…</div></div>
+    return <div className="min-h-screen flex flex-col p-5 py-5 px-6 overflow-y-auto"><div className="text-gray-500 p-5">Loading team insights…</div></div>
   }
 
   return (
-    <div className="app-shell">
-      <div className="page-header-row">
+    <div className="min-h-screen flex flex-col p-5 py-5 px-6 overflow-y-auto">
+      <div className="flex justify-between items-center gap-3 mb-4">
         <div>
-          <h1 className="page-title">Manager Dashboard</h1>
-          <div className="subtitle">Team activity and follow-up opportunities</div>
+          <h1 className="text-xl font-bold m-0 tracking-tight">Manager Dashboard</h1>
+          <div className="text-gray-500 text-xs font-normal block">Team activity and follow-up opportunities</div>
         </div>
-        <div className="user-chip">
+        <div className="flex items-center gap-2 p-2 px-2.5 border border-gray-200 rounded-full bg-white text-xs text-gray-500">
           <span>{user?.email || 'Signed in'} • {user?.role || 'manager'}</span>
-          <button className="btn-outline" onClick={() => navigate('/')}>Back to CRM</button>
+          <button className="border border-gray-200 bg-white rounded px-3 py-1.5 text-xs font-semibold cursor-pointer text-gray-900 whitespace-nowrap hover:border-blue-500 hover:text-blue-500" onClick={() => navigate('/')}>Back to CRM</button>
         </div>
       </div>
 
-      {error ? <div className="auth-error">{error}</div> : null}
+      {error ? <div className="text-red-500 text-xs">{error}</div> : null}
 
       {summary ? (
         <>
-          <div className="dashboard-grid">
-            <div className="metric-card">
-              <div className="metric-value">{summary.total_interactions_this_week}</div>
-              <div className="metric-label">Interactions this week</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-gray-200 rounded-2xl p-4 shadow-sm">
+              <div className="text-2xl font-bold text-blue-600">{summary.total_interactions_this_week}</div>
+              <div className="text-xs text-gray-500 mt-1">Interactions this week</div>
             </div>
-            <div className="metric-card">
-              <div className="metric-value">{summary.total_interactions_this_month}</div>
-              <div className="metric-label">Interactions this month</div>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-gray-200 rounded-2xl p-4 shadow-sm">
+              <div className="text-2xl font-bold text-blue-600">{summary.total_interactions_this_month}</div>
+              <div className="text-xs text-gray-500 mt-1">Interactions this month</div>
             </div>
-            <div className="metric-card">
-              <div className="metric-value">{summary.sentiment_breakdown?.Positive || 0}</div>
-              <div className="metric-label">Positive sentiment</div>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-gray-200 rounded-2xl p-4 shadow-sm">
+              <div className="text-2xl font-bold text-blue-600">{summary.sentiment_breakdown?.Positive || 0}</div>
+              <div className="text-xs text-gray-500 mt-1">Positive sentiment</div>
             </div>
-            <div className="metric-card">
-              <div className="metric-value">{summary.sentiment_breakdown?.Negative || 0}</div>
-              <div className="metric-label">Negative sentiment</div>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-gray-200 rounded-2xl p-4 shadow-sm">
+              <div className="text-2xl font-bold text-blue-600">{summary.sentiment_breakdown?.Negative || 0}</div>
+              <div className="text-xs text-gray-500 mt-1">Negative sentiment</div>
             </div>
           </div>
 
-          <div className="split-layout dashboard-layout">
-            <div className="panel">
-              <div className="panel-header">Activity volume</div>
-              <div className="profile-body">
-                <div className="chart-wrap">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_minmax(320px,1fr)] gap-4.5 items-stretch flex-1 min-h-0 mb-4">
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0 h-full overflow-hidden">
+              <div className="p-3.5 px-5 border-b border-gray-200 font-semibold text-sm flex items-center gap-2 flex-shrink-0">Activity volume</div>
+              <div className="p-5 grid gap-4.5 overflow-y-auto flex-1 min-h-0">
+                <div className="h-60 mt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -98,45 +98,45 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="panel">
-              <div className="panel-header">Top materials & samples</div>
-              <div className="profile-body">
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0 h-full overflow-hidden">
+              <div className="p-3.5 px-5 border-b border-gray-200 font-semibold text-sm flex items-center gap-2 flex-shrink-0">Top materials & samples</div>
+              <div className="p-5 grid gap-4.5 overflow-y-auto flex-1 min-h-0">
                 {summary.top_materials?.length ? (
-                  <ul className="dashboard-list">
+                  <ul className="list-none p-0 m-0 flex flex-col gap-2.5">
                     {summary.top_materials.map((item, index) => (
-                      <li className="dashboard-list-item" key={`${item.name}-${index}`}>
+                      <li className="flex justify-between items-center gap-2.5 p-2.5 px-3 border border-gray-200 rounded-lg bg-gray-50" key={`${item.name}-${index}`}>
                         <div>
                           <strong>{item.name}</strong>
-                          <div className="history-item-date">{item.item_type}</div>
+                          <div className="text-xs font-semibold text-gray-500">No activity in the last 7 days</div>
                         </div>
-                        <span className="chip">{item.count} uses</span>
+                        <span className="bg-blue-100 text-blue-600 rounded-full px-2.5 py-0.75 text-xs font-semibold">{item.count} uses</span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="profile-empty">No material usage recorded yet.</div>
+                  <div className="text-gray-500 p-5">No material usage recorded yet.</div>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="panel">
-            <div className="panel-header">Reps needing attention</div>
-            <div className="profile-body">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0 h-full overflow-hidden">
+            <div className="p-3.5 px-5 border-b border-gray-200 font-semibold text-sm flex items-center gap-2 flex-shrink-0">Reps needing attention</div>
+            <div className="p-5 grid gap-4.5 overflow-y-auto flex-1 min-h-0">
               {summary.needs_attention?.length ? (
-                <ul className="dashboard-list">
+                <ul className="list-none p-0 m-0 flex flex-col gap-2.5">
                   {summary.needs_attention.map((rep) => (
-                    <li className="dashboard-list-item" key={rep.email}>
+                    <li className="flex justify-between items-center gap-2.5 p-2.5 px-3 border border-gray-200 rounded-lg bg-gray-50" key={rep.email}>
                       <div>
                         <strong>{rep.email}</strong>
-                        <div className="history-item-date">No activity in the last 7 days</div>
+                        <div className="text-xs font-semibold text-gray-500">No activity in the last 7 days</div>
                       </div>
-                      <span className="chip">{rep.role}</span>
+                      <span className="bg-blue-100 text-blue-600 rounded-full px-2.5 py-0.75 text-xs font-semibold">{rep.role}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <div className="profile-empty">All reps are active this week.</div>
+                <div className="text-gray-500 p-5">All reps are active this week.</div>
               )}
             </div>
           </div>

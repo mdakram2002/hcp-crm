@@ -11,8 +11,8 @@ const SENTIMENTS = [
 
 function Field({ label, children }) {
   return (
-    <div className="field">
-      <label>{label}</label>
+    <div>
+      <label className="block text-xs font-semibold mb-1.5 text-gray-900">{label}</label>
       {children}
     </div>
   )
@@ -77,15 +77,15 @@ export default function InteractionForm() {
   const inputClassName = useMemo(() => (showHcpOptions && hcpOptions.length > 0 ? 'autocomplete-open' : ''), [showHcpOptions, hcpOptions.length])
 
   return (
-    <div className="panel">
-      <div className="panel-header">Interaction Details</div>
-      <div className="form-body">
-        <div className="form-row">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col min-h-0 h-full overflow-hidden">
+      <div className="p-3.5 px-5 border-b border-gray-200 font-semibold text-sm flex items-center gap-2 flex-shrink-0">Interaction Details</div>
+      <div className="p-5 flex flex-col gap-4.5 overflow-y-auto flex-1 min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
           <Field label="HCP Name">
-            <div className="autocomplete-wrap">
+            <div className="relative">
               <input
                 type="text"
-                className={inputClassName}
+                className={`w-full border ${showHcpOptions && hcpOptions.length > 0 ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200'} rounded-lg p-2.25 px-2.75 text-sm font-family text-gray-900 bg-white transition-all duration-200`}
                 placeholder="Search or select HCP..."
                 value={hcpQuery}
                 onChange={(e) => handleHcpInputChange(e.target.value)}
@@ -93,17 +93,17 @@ export default function InteractionForm() {
                 onBlur={() => window.setTimeout(() => setShowHcpOptions(false), 120)}
               />
               {showHcpOptions && hcpOptions.length > 0 && (
-                <div className="autocomplete-list">
+                <div className="absolute z-20 left-0 right-0 top-[calc(100%+4px)] bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                   {hcpOptions.map((option) => (
                     <button
                       type="button"
-                      className="autocomplete-item"
+                      className="w-full border-0 bg-white p-2.5 px-3 flex flex-col items-start gap-0.5 cursor-pointer text-left"
                       key={option.id}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleHcpSelect(option)}
                     >
                       <span>{option.name}</span>
-                      {option.institution && <small>{option.institution}</small>}
+                      {option.institution && <small className="text-gray-500 text-xs">{option.institution}</small>}
                     </button>
                   ))}
                 </div>
@@ -111,8 +111,9 @@ export default function InteractionForm() {
             </div>
           </Field>
           <Field label="Interaction Type">
-            <div className="select-wrap">
+            <div className="relative">
               <select
+                className="w-full border border-gray-200 rounded-lg p-2.25 px-2.75 text-sm font-family text-gray-900 bg-white appearance-none"
                 value={form.interaction_type}
                 onChange={(e) => update('interaction_type', e.target.value)}
               >
@@ -121,22 +122,24 @@ export default function InteractionForm() {
                 <option>Email</option>
                 <option>Conference</option>
               </select>
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-500">⌄</div>
             </div>
           </Field>
         </div>
 
-        <div className="form-row">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
           <Field label="Date">
-            <input type="date" value={form.date} onChange={(e) => update('date', e.target.value)} />
+            <input type="date" className="w-full border border-gray-200 rounded-lg p-2.25 px-2.75 text-sm font-family text-gray-900 bg-white" value={form.date} onChange={(e) => update('date', e.target.value)} />
           </Field>
           <Field label="Time">
-            <input type="time" value={form.time} onChange={(e) => update('time', e.target.value)} />
+            <input type="time" className="w-full border border-gray-200 rounded-lg p-2.25 px-2.75 text-sm font-family text-gray-900 bg-white" value={form.time} onChange={(e) => update('time', e.target.value)} />
           </Field>
         </div>
 
         <Field label="Attendees">
           <input
             type="text"
+            className="w-full border border-gray-200 rounded-lg p-2.25 px-2.75 text-sm font-family text-gray-900 bg-white"
             placeholder="Enter names or search..."
             value={(form.attendees || []).join(', ')}
             onChange={(e) =>
@@ -150,71 +153,73 @@ export default function InteractionForm() {
 
         <Field label="Topics Discussed">
           <textarea
+            className="w-full border border-gray-200 rounded-lg p-2.25 px-2.75 text-sm font-family text-gray-900 bg-white resize-y min-h-16"
             placeholder="Enter key discussion points..."
             value={form.topics_discussed}
             onChange={(e) => update('topics_discussed', e.target.value)}
           />
         </Field>
-        <button type="button" className="voice-btn">
+        <button type="button" className="border border-gray-200 bg-gray-50 rounded-lg p-1.75 px-3 text-xs font-semibold cursor-pointer text-gray-900 -mt-1.5">
           🎙 Summarize from Voice Note (Requires Consent)
         </button>
 
         <div>
-          <div className="section-label">Materials Shared / Samples Distributed</div>
+          <div className="text-xs font-semibold mb-2">Materials Shared / Samples Distributed</div>
 
-          <div className="materials-row">
+          <div className="flex items-center justify-between border border-gray-200 rounded-lg p-3 px-3.5 mb-2">
             <div>
-              <div className="materials-title">Materials Shared</div>
+              <div className="text-xs font-semibold mb-0.5">Materials Shared</div>
               {form.materials_shared.length === 0 ? (
-                <div className="materials-empty">No materials added.</div>
+                <div className="text-xs text-gray-500 italic">No materials added.</div>
               ) : (
-                <div className="chip-list">
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {form.materials_shared.map((m) => (
-                    <span className="chip" key={m}>
+                    <span className="bg-blue-100 text-blue-600 rounded-full px-2.5 py-0.75 text-xs font-semibold" key={m}>
                       {m}
                     </span>
                   ))}
                 </div>
               )}
             </div>
-            <button type="button" className="btn-outline">
+            <button type="button" className="border border-gray-200 bg-white rounded-lg p-1.75 px-3 text-xs font-semibold cursor-pointer text-gray-900 whitespace-nowrap hover:border-blue-500 hover:text-blue-500">
               🔍 Search/Add
             </button>
           </div>
 
-          <div className="materials-row">
+          <div className="flex items-center justify-between border border-gray-200 rounded-lg p-3 px-3.5">
             <div>
-              <div className="materials-title">Samples Distributed</div>
+              <div className="text-xs font-semibold mb-0.5">Samples Distributed</div>
               {form.samples_distributed.length === 0 ? (
-                <div className="materials-empty">No samples added.</div>
+                <div className="text-xs text-gray-500 italic">No samples added.</div>
               ) : (
-                <div className="chip-list">
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {form.samples_distributed.map((m) => (
-                    <span className="chip" key={m}>
+                    <span className="bg-blue-100 text-blue-600 rounded-full px-2.5 py-0.75 text-xs font-semibold" key={m}>
                       {m}
                     </span>
                   ))}
                 </div>
               )}
             </div>
-            <button type="button" className="btn-outline">
+            <button type="button" className="border border-gray-200 bg-white rounded-lg p-1.75 px-3 text-xs font-semibold cursor-pointer text-gray-900 whitespace-nowrap hover:border-blue-500 hover:text-blue-500">
               📦 Add Sample
             </button>
           </div>
         </div>
 
         <div>
-          <div className="section-label">Observed/Inferred HCP Sentiment</div>
-          <div className="sentiment-group">
+          <div className="text-xs font-semibold mb-2">Observed/Inferred HCP Sentiment</div>
+          <div className="flex gap-5.5">
             {SENTIMENTS.map((s) => (
-              <label className="sentiment-option" key={s.value}>
+              <label className="flex items-center gap-1.5 text-sm font-medium cursor-pointer" key={s.value}>
                 <input
                   type="radio"
                   name="sentiment"
+                  className="accent-blue-600 w-3.75 h-3.75"
                   checked={form.sentiment === s.value}
                   onChange={() => update('sentiment', s.value)}
                 />
-                <span className="emoji">{s.emoji}</span>
+                <span className="text-base">{s.emoji}</span>
                 {s.value}
               </label>
             ))}
@@ -223,6 +228,7 @@ export default function InteractionForm() {
 
         <Field label="Outcomes">
           <textarea
+            className="w-full border border-gray-200 rounded-lg p-2.25 px-2.75 text-sm font-family text-gray-900 bg-white resize-y min-h-16"
             placeholder="Key outcomes or agreements..."
             value={form.outcomes}
             onChange={(e) => update('outcomes', e.target.value)}
@@ -231,6 +237,7 @@ export default function InteractionForm() {
 
         <Field label="Follow-up Actions">
           <textarea
+            className="w-full border border-gray-200 rounded-lg p-2.25 px-2.75 text-sm font-family text-gray-900 bg-white resize-y min-h-16"
             placeholder="Enter next steps or tasks..."
             value={(form.follow_up_actions || []).join('\n')}
             onChange={(e) =>
@@ -244,13 +251,13 @@ export default function InteractionForm() {
 
         {/* AI Suggested Follow-ups - Clickable */}
         {form.ai_suggested_follow_ups && form.ai_suggested_follow_ups.length > 0 && (
-          <div className="suggested-followups">
-            <div className="heading">AI Suggested Follow-ups:</div>
-            <ul>
+          <div className="mt-1 text-xs">
+            <div className="font-semibold mb-1.5 text-gray-900">AI Suggested Follow-ups:</div>
+            <ul className="m-0 p-0 list-none flex flex-col gap-1">
               {form.ai_suggested_follow_ups.map((f, i) => (
                 <li key={i}>
                   <button
-                    className="follow-up-link"
+                    className="bg-none border-none p-0 m-0 text-blue-600 no-underline cursor-pointer text-xs font-family text-left inline"
                     onClick={() => handleFollowUpClick(f)}
                   >
                     + {f}
@@ -258,7 +265,7 @@ export default function InteractionForm() {
                 </li>
               ))}
             </ul>
-            <p className="hint">Click any suggestion to add it to Follow-up Actions</p>
+            <p className="mt-2 text-gray-500 italic text-xs">Click any suggestion to add it to Follow-up Actions</p>
           </div>
         )}
       </div>
