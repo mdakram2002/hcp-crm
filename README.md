@@ -241,10 +241,13 @@ Frontend             Backend
 2. **Deployment Pipeline** (`deploy.yml`):
    - Build production backend Docker image with commit SHA tag
    - Push Docker image to Docker Hub (both SHA tag and `latest`)
-   - Deploy frontend to Vercel production
    - Deploy backend Docker container to Azure VM via SSH
    - Health check: Verify `/api/health` endpoint is working
    - This pipeline runs only on push to `main`
+
+3. **Frontend Deployment**:
+   - Vercel's official Git integration automatically deploys the frontend on push to `main`
+   - Vercel configuration is managed in the Vercel dashboard
 
 ### Required GitHub Secrets
 
@@ -253,11 +256,6 @@ Configure these in your GitHub repository settings under `Settings > Secrets and
 #### Docker Secrets:
 - `DOCKER_USERNAME`: Your Docker Hub username
 - `DOCKER_PASSWORD`: Your Docker Hub password or access token
-
-#### Vercel Secrets:
-- `VERCEL_TOKEN`: Your Vercel authentication token
-- `VERCEL_ORG_ID`: Your Vercel organization ID
-- `VERCEL_PROJECT_ID`: Your Vercel project ID
 
 #### Azure VM Secrets:
 - `AZURE_VM_IP`: Your Azure VM public IP address
@@ -307,7 +305,9 @@ docker run hello-world
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
-   - **Environment Variables**: Add `VITE_API_BASE` with your production backend URL
+3. Add Environment Variable in Vercel dashboard:
+   - `VITE_API_BASE`: Your production backend URL (e.g., `https://api.yourdomain.com`)
+   - **Important**: Do not include `/api` in the URL
 
 ### Manual Backend Deployment
 
