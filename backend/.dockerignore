@@ -52,12 +52,12 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# Node
-node_modules/
-dist/
-build/
-*.log
+# Git
+.git/
+.gitignore
 
-# Logs
-*.log
+# CI/CD
+.github/
 
+# Documentation
+README.md

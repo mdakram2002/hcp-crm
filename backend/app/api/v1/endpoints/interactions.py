@@ -10,7 +10,7 @@ from app.models.interaction import Interaction
 from app.models.user import User
 from app.schemas.interaction import FinalizeRequest, InteractionOut
 
-router = APIRouter(prefix="/api", tags=["interactions"])
+router = APIRouter(tags=["interactions"])
 
 
 @router.get("/interactions/draft", response_model=InteractionOut)

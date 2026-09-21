@@ -9,7 +9,7 @@ from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.schemas.chat import ChatRequest, ChatResponse
 
-router = APIRouter(prefix="/api", tags=["chat"])
+router = APIRouter(tags=["chat"])
 
 _CONVERSATIONS: dict = {}
 MAX_HISTORY = 20

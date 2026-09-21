@@ -134,19 +134,17 @@ All routes below require a bearer token except registration, login, guest login,
 | `/api/auth/login` | POST | Sign in and receive an access token. |
 | `/api/auth/guest-login` | POST | Create and sign in with a guest account. |
 | `/api/auth/me` | GET | Fetch the current user. |
-| `/api/api/chat` | POST | Send a message to the AI assistant. |
-| `/api/api/chat/reset` | POST | Clear the in-memory chat history for a session. |
-| `/api/api/interactions/draft` | GET | Fetch or create a draft by `session_id`. |
-| `/api/api/interactions/finalize` | POST | Finalize an interaction draft. |
-| `/api/api/interactions` | GET | List the current rep's interactions. |
-| `/api/api/interactions/all` | GET | List all interactions (manager only). |
-| `/api/api/materials/search` | GET | Search catalog materials or samples. |
-| `/api/api/hcps/search` | GET | Search HCPs. |
-| `/api/api/hcps/{hcp_id}` | GET | Get an HCP profile and history. |
-| `/api/api/hcps/{hcp_id}/sentiment-trend` | GET | Get HCP sentiment data for the chart. |
-| `/api/api/dashboard/summary` | GET | Get manager dashboard data. |
-
-> **Route-prefix note:** the current backend mounts the v1 router at `/api` and the interaction, chat, HCP, and dashboard endpoint modules also declare `/api`, so their effective server paths are `/api/api/...`. The frontend client currently requests `/api/...`; align one of these prefixes before using those features end-to-end.
+| `/api/chat` | POST | Send a message to the AI assistant. |
+| `/api/chat/reset` | POST | Clear the in-memory chat history for a session. |
+| `/api/interactions/draft` | GET | Fetch or create a draft by `session_id`. |
+| `/api/interactions/finalize` | POST | Finalize an interaction draft. |
+| `/api/interactions` | GET | List the current rep's interactions. |
+| `/api/interactions/all` | GET | List all interactions (manager only). |
+| `/api/materials/search` | GET | Search catalog materials or samples. |
+| `/api/hcps/search` | GET | Search HCPs. |
+| `/api/hcps/{hcp_id}` | GET | Get an HCP profile and history. |
+| `/api/hcps/{hcp_id}/sentiment-trend` | GET | Get HCP sentiment data for the chart. |
+| `/api/dashboard/summary` | GET | Get manager dashboard data. |
 
 ## Project structure
 
@@ -197,3 +195,155 @@ npm run build
 ## License
 
 This repository was created as an interview assignment.
+
+## CI/CD Deployment
+
+This project uses GitHub Actions for automated CI/CD deployment to production.
+
+### Deployment Flow
+
+```
+GitHub main branch
+    ↓
+GitHub Actions
+    ↓
+CI checks (ci.yml)
+    ↓
+Docker image build + push (deploy.yml)
+    ↓
+┌──────────────────┐
+▼                  ▼
+Frontend             Backend
+     │                  │
+     ▼                  ▼
+  Vercel             Azure VM
+                        │
+                        ▼
+                  Docker Container
+                        │
+                        ▼
+                     FastAPI
+                        │
+                  ┌─────┴─────┐
+                  ▼           ▼
+             PostgreSQL    Groq/OpenAI
+             + pgvector
+```
+
+### What happens on push to `main`:
+
+1. **CI Pipeline** (`ci.yml`):
+   - Frontend: Install dependencies, build
+   - Backend: Install dependencies, run tests
+   - Backend: Validate Docker image build (does not push)
+   - This pipeline runs on push to `main` and `develop`, and on pull requests
+
+2. **Deployment Pipeline** (`deploy.yml`):
+   - Build production backend Docker image with commit SHA tag
+   - Push Docker image to Docker Hub (both SHA tag and `latest`)
+   - Deploy frontend to Vercel production
+   - Deploy backend Docker container to Azure VM via SSH
+   - Health check: Verify `/api/health` endpoint is working
+   - This pipeline runs only on push to `main`
+
+### Required GitHub Secrets
+
+Configure these in your GitHub repository settings under `Settings > Secrets and variables > Actions`:
+
+#### Docker Secrets:
+- `DOCKER_USERNAME`: Your Docker Hub username
+- `DOCKER_PASSWORD`: Your Docker Hub password or access token
+
+#### Vercel Secrets:
+- `VERCEL_TOKEN`: Your Vercel authentication token
+- `VERCEL_ORG_ID`: Your Vercel organization ID
+- `VERCEL_PROJECT_ID`: Your Vercel project ID
+
+#### Azure VM Secrets:
+- `AZURE_VM_IP`: Your Azure VM public IP address
+- `AZURE_VM_USER`: SSH username for Azure VM (e.g., `azureuser`)
+- `AZURE_SSH_PRIVATE_KEY`: Private SSH key for Azure VM authentication
+
+#### Application Secrets:
+- `PRODUCTION_API_BASE`: Production backend URL (e.g., `https://api.yourdomain.com`)
+- `PRODUCTION_FRONTEND_ORIGIN`: Production frontend URL (e.g., `https://yourdomain.com`)
+- `PRODUCTION_DATABASE_URL`: Production PostgreSQL connection string
+- `GROQ_API_KEY`: Your Groq API key for AI features
+- `GROQ_MODEL`: Groq model to use (default: `llama-3.3-70b-versatile`)
+- `OPENAI_API_KEY`: Your OpenAI API key for embeddings
+- `JWT_SECRET_KEY`: Secret key for JWT token signing
+
+### Azure VM Prerequisites
+
+Run these commands once on your Azure VM to set up the environment:
+
+```bash
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+
+# Start Docker service
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# Configure firewall to allow port 8000
+sudo ufw allow 8000/tcp
+sudo ufw allow 22/tcp
+sudo ufw enable
+
+# Test Docker installation
+docker --version
+docker run hello-world
+```
+
+### Vercel Configuration
+
+1. Connect your GitHub repository to Vercel
+2. Configure the project with these settings:
+   - **Framework Preset**: Vite
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - **Environment Variables**: Add `VITE_API_BASE` with your production backend URL
+
+### Manual Backend Deployment
+
+If you need to manually redeploy the backend to Azure VM:
+
+```bash
+# SSH into your Azure VM
+ssh azureuser@your-vm-ip
+
+# Pull specific commit image (replace COMMIT_SHA with actual commit hash)
+docker pull your-docker-username/hcp-crm-backend:COMMIT_SHA
+
+# Stop existing container
+docker stop hcp-crm-backend
+docker rm hcp-crm-backend
+
+# Create .env file with your production secrets
+cat > .env << EOF
+DATABASE_URL=your-production-database-url
+FRONTEND_ORIGIN=https://yourdomain.com
+GROQ_API_KEY=your-groq-api-key
+GROQ_MODEL=llama-3.3-70b-versatile
+OPENAI_API_KEY=your-openai-api-key
+JWT_SECRET_KEY=your-jwt-secret
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
+EOF
+
+# Run new container with specific commit image
+docker run -d \
+  --name hcp-crm-backend \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  --env-file .env \
+  your-docker-username/hcp-crm-backend:COMMIT_SHA
+
+# Verify health
+curl http://localhost:8000/api/health
+```

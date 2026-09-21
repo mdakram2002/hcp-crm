@@ -7,7 +7,7 @@ from app.models.hcp import HCP
 from app.models.interaction import Interaction
 from app.models.user import User
 
-router = APIRouter(prefix="/api", tags=["hcps"])
+router = APIRouter(tags=["hcps"])
 
 
 @router.get("/hcps/search")

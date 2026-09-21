@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_manager, get_db
 from app.crud.interaction import get_dashboard_summary
 
-router = APIRouter(prefix="/api", tags=["dashboard"])
+router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/dashboard/summary")
