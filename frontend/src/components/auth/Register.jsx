@@ -59,7 +59,7 @@ export default function Register() {
       window.localStorage.setItem('hcp_crm_token', tokenData.access_token)
       const user = await fetchCurrentUser()
       dispatch(setAuth({ token: tokenData.access_token, user }))
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       setError('Unable to sign in as a guest right now.')
     } finally {
@@ -70,16 +70,16 @@ export default function Register() {
   return (
     <AuthLayout>
       <AuthBrandPanel />
-      <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
+      <div className="lg:w-1/2 p-6 lg:p-8 flex flex-col justify-center overflow-y-auto">
         <div className="max-w-md mx-auto w-full">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h2>
-            <p className="text-gray-600">Join HCP CRM and get started</p>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Your Account</h2>
+            <p className="text-gray-600 text-sm">Join HCP CRM and get started</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Full Name
               </label>
               <AuthInput
@@ -92,7 +92,7 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Email Address
               </label>
               <AuthInput
@@ -105,7 +105,7 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Password
               </label>
               <PasswordInput
@@ -117,7 +117,7 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Confirm Password
               </label>
               <PasswordInput
@@ -130,14 +130,14 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Role
               </label>
               <div className="relative">
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white text-gray-900"
                 >
                   <option value="rep">Rep</option>
                   <option value="manager">Manager</option>
@@ -160,7 +160,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Creating account...' : 'Create Account'}
             </button>
@@ -169,9 +169,9 @@ export default function Register() {
               type="button"
               onClick={handleGuestLogin}
               disabled={isSubmitting}
-              className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-gray-100 text-gray-700 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSubmitting ? 'Signing in...' : 'Login as Guest'}
+              {isSubmitting ? 'Signing in...' : 'Continue as Guest'}
             </button>
           </form>
 

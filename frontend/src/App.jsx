@@ -1,4 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import HomePage from './components/pages/HomePage'
+import AboutPage from './components/pages/AboutPage'
+import ServicesPage from './components/pages/ServicesPage'
+import ContactPage from './components/pages/ContactPage'
 import LogInteractionPage from './components/pages/LogInteractionPage'
 import DashboardPage from './components/pages/DashboardPage'
 import HCPProfilePage from './components/pages/HCPProfilePage'
@@ -17,12 +21,16 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/services" element={<ServicesPage />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
-            <Route path="/" element={<LogInteractionPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/log-interaction" element={<LogInteractionPage />} />
             <Route path="/hcp/:id" element={<HCPProfilePage />} />
             <Route path="/hcp-search" element={<HCPSearchPage />} />
             <Route path="/interactions" element={<InteractionsPage />} />

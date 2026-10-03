@@ -54,7 +54,7 @@ export default function Login() {
       
       // Set auth state with guest user
       dispatch(setAuth({ token: 'guest-token', user: guestUser }))
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       setError('Unable to sign in as a guest right now.')
     } finally {
@@ -65,16 +65,16 @@ export default function Login() {
   return (
     <AuthLayout>
       <AuthBrandPanel />
-      <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
+      <div className="lg:w-1/2 p-6 lg:p-8 flex flex-col justify-center overflow-y-auto">
         <div className="max-w-md mx-auto w-full">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-gray-600">Sign in to your HCP CRM account</p>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+            <p className="text-gray-600 text-sm">Sign in to your HCP CRM account</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Email Address
               </label>
               <AuthInput
@@ -87,7 +87,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
                 Password
               </label>
               <PasswordInput
@@ -106,9 +106,9 @@ export default function Login() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                <span className="ml-2 text-xs text-gray-600">Remember me</span>
               </label>
-              <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
                 Forgot password?
               </Link>
             </div>
@@ -122,7 +122,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </button>
@@ -131,9 +131,9 @@ export default function Login() {
               type="button"
               onClick={handleGuestLogin}
               disabled={isSubmitting}
-              className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-gray-100 text-gray-700 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSubmitting ? 'Signing in...' : 'Login as Guest'}
+              {isSubmitting ? 'Signing in...' : 'Continue as Guest'}
             </button>
           </form>
 

@@ -57,17 +57,23 @@ The LangGraph agent has eight tools:
 
 ## Run locally
 
-### 1. Start PostgreSQL
+### 1. Configure the environment
+
+Copy `backend/.env.example` to `backend/.env` and replace the placeholder database password and application secrets. The database password in `DATABASE_URL` must match `POSTGRES_PASSWORD`; URL-encode it in `DATABASE_URL` if it contains URL-reserved characters.
+
+For running the API directly on your computer, change the database host in `DATABASE_URL` from `db:5432` to `localhost:5433`. Docker Compose uses the `db:5432` address shown in the example.
+
+### 2. Start PostgreSQL
 
 From the repository root:
 
 ```bash
-docker compose up -d
+docker compose up -d db
 ```
 
-The included Compose configuration starts PostgreSQL on `localhost:5433` using database `hcp_crm` and credentials `postgres` / `postgres`.
+The included Compose configuration uses PostgreSQL 16 with `pgvector`, persists its data in a Docker volume, and binds its local development port only to `127.0.0.1:5433`.
 
-### 2. Configure and run the backend
+### 3. Configure and run the backend
 
 ```powershell
 cd backend
@@ -76,7 +82,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Create `backend/.env` with the following values:
+The application settings in `backend/.env` include:
 
 ```dotenv
 DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5433/hcp_crm
@@ -99,7 +105,7 @@ uvicorn app.main:app --reload --port 8000
 
 The health check is available at `http://localhost:8000/api/health`.
 
-### 3. Configure and run the frontend
+### 4. Configure and run the frontend
 
 ```bash
 cd frontend
@@ -196,154 +202,96 @@ npm run build
 
 This repository was created as an interview assignment.
 
-## CI/CD Deployment
+## Deployment: AWS EC2
 
-This project uses GitHub Actions for automated CI/CD deployment to production.
+The backend and database run together on one Linux EC2 instance:
 
-### Deployment Flow
-
-```
-GitHub main branch
-    ↓
-GitHub Actions
-    ↓
-CI checks (ci.yml)
-    ↓
-Docker image build + push (deploy.yml)
-    ↓
-┌──────────────────┐
-▼                  ▼
-Frontend             Backend
-     │                  │
-     ▼                  ▼
-  Vercel             Azure VM
-                        │
-                        ▼
-                  Docker Container
-                        │
-                        ▼
-                     FastAPI
-                        │
-                  ┌─────┴─────┐
-                  ▼           ▼
-             PostgreSQL    Groq/OpenAI
-             + pgvector
+```text
+GitHub (push to main)
+  -> GitHub Actions (build image, SSH deploy, health check)
+  -> AWS EC2 (Linux)
+      -> Docker Compose
+          -> FastAPI backend + LangGraph (port 8000)
+          -> PostgreSQL 16 + pgvector (private Compose network)
+              -> persistent Docker volume
+  FastAPI -> Groq / OpenAI APIs
+Frontend -> remains deployed through Vercel
 ```
 
-### What happens on push to `main`:
+PostgreSQL has no public port. Compose binds its optional host port to `127.0.0.1:5433`, and the database is reachable by the backend on the private Compose network. Do not add inbound EC2 security-group rules for ports `5432` or `5433`.
 
-1. **CI Pipeline** (`ci.yml`):
-   - Frontend: Install dependencies, build
-   - Backend: Install dependencies, run tests
-   - Backend: Validate Docker image build (does not push)
-   - This pipeline runs on push to `main` and `develop`, and on pull requests
+### First-time EC2 setup
 
-2. **Deployment Pipeline** (`deploy.yml`):
-   - Build production backend Docker image with commit SHA tag
-   - Push Docker image to Docker Hub (both SHA tag and `latest`)
-   - Deploy backend Docker container to Azure VM via SSH
-   - Health check: Verify `/api/health` endpoint is working
-   - This pipeline runs only on push to `main`
+These commands assume an Ubuntu 22.04/24.04 EC2 instance. Configure its security group to allow SSH (port 22) from your administration IP and the GitHub-hosted runner IP ranges used by Actions; those ranges can change, so keep the rule current. Alternatively, use a self-hosted runner. Allow the backend API port 8000 from the clients that need to reach it. Do not open PostgreSQL ports.
 
-3. **Frontend Deployment**:
-   - Vercel's official Git integration automatically deploys the frontend on push to `main`
-   - Vercel configuration is managed in the Vercel dashboard
-
-### Required GitHub Secrets
-
-Configure these in your GitHub repository settings under `Settings > Secrets and variables > Actions`:
-
-#### Docker Secrets:
-- `DOCKER_USERNAME`: Your Docker Hub username
-- `DOCKER_PASSWORD`: Your Docker Hub password or access token
-
-#### Azure VM Secrets:
-- `AZURE_VM_IP`: Your Azure VM public IP address
-- `AZURE_VM_USER`: SSH username for Azure VM (e.g., `azureuser`)
-- `AZURE_SSH_PRIVATE_KEY`: Private SSH key for Azure VM authentication
-
-#### Application Secrets:
-- `PRODUCTION_API_BASE`: Production backend URL (e.g., `https://api.yourdomain.com`)
-- `PRODUCTION_FRONTEND_ORIGIN`: Production frontend URL (e.g., `https://yourdomain.com`)
-- `PRODUCTION_DATABASE_URL`: Production PostgreSQL connection string
-- `GROQ_API_KEY`: Your Groq API key for AI features
-- `GROQ_MODEL`: Groq model to use (default: `llama-3.3-70b-versatile`)
-- `OPENAI_API_KEY`: Your OpenAI API key for embeddings
-- `JWT_SECRET_KEY`: Secret key for JWT token signing
-
-### Azure VM Prerequisites
-
-Run these commands once on your Azure VM to set up the environment:
+Install Docker Engine, Compose, and Git:
 
 ```bash
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-
-# Add user to docker group
-sudo usermod -aG docker $USER
-
-# Start Docker service
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# Configure firewall to allow port 8000
-sudo ufw allow 8000/tcp
-sudo ufw allow 22/tcp
-sudo ufw enable
-
-# Test Docker installation
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl git
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker "$USER"
+newgrp docker
 docker --version
-docker run hello-world
+docker compose version
 ```
 
-### Vercel Configuration
-
-1. Connect your GitHub repository to Vercel
-2. Configure the project with these settings:
-   - **Framework Preset**: Vite
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-3. Add Environment Variable in Vercel dashboard:
-   - `VITE_API_BASE`: Your production backend URL (e.g., `https://api.yourdomain.com`)
-   - **Important**: Do not include `/api` in the URL
-
-### Manual Backend Deployment
-
-If you need to manually redeploy the backend to Azure VM:
+The EC2 instance needs read access to the GitHub repository for `git pull`. Create a separate read-only GitHub deploy key on the instance and add its public key under the repository's **Settings > Deploy keys**. This key is separate from `EC2_SSH_KEY`, which GitHub Actions uses to log in to EC2:
 
 ```bash
-# SSH into your Azure VM
-ssh azureuser@your-vm-ip
-
-# Pull specific commit image (replace COMMIT_SHA with actual commit hash)
-docker pull your-docker-username/hcp-crm-backend:COMMIT_SHA
-
-# Stop existing container
-docker stop hcp-crm-backend
-docker rm hcp-crm-backend
-
-# Create .env file with your production secrets
-cat > .env << EOF
-DATABASE_URL=your-production-database-url
-FRONTEND_ORIGIN=https://yourdomain.com
-GROQ_API_KEY=your-groq-api-key
-GROQ_MODEL=llama-3.3-70b-versatile
-OPENAI_API_KEY=your-openai-api-key
-JWT_SECRET_KEY=your-jwt-secret
-JWT_ALGORITHM=HS256
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
-EOF
-
-# Run new container with specific commit image
-docker run -d \
-  --name hcp-crm-backend \
-  --restart unless-stopped \
-  -p 8000:8000 \
-  --env-file .env \
-  your-docker-username/hcp-crm-backend:COMMIT_SHA
-
-# Verify health
-curl http://localhost:8000/api/health
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+ssh-keygen -t ed25519 -C "hcp-crm-ec2-readonly" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
 ```
+
+After adding the public key in GitHub, clone the repository:
+
+```bash
+ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+sudo mkdir -p /opt/hcp-crm
+sudo chown "$USER:$USER" /opt/hcp-crm
+git clone git@github.com:mdakram2002/hcp-crm.git /opt/hcp-crm
+cd /opt/hcp-crm
+cp backend/.env.example backend/.env
+chmod 600 backend/.env
+nano backend/.env
+```
+
+On EC2, set real values in `backend/.env`. Use the Compose hostname and port in `DATABASE_URL`, for example `postgresql://postgres:<URL-ENCODED-PASSWORD>@db:5432/hcp_crm`; set the same password in `POSTGRES_PASSWORD`. Set `FRONTEND_ORIGIN` to the deployed frontend origin, and supply the real Groq, optional OpenAI, and long random JWT secrets. Keep this file only on EC2; it is ignored by Git.
+
+Start and verify the first deployment:
+
+```bash
+cd /opt/hcp-crm
+docker compose up -d --build
+docker compose ps
+curl --fail http://127.0.0.1:8000/api/health
+```
+
+The database data persists in the `hcp_crm_pgdata` Docker volume across container rebuilds.
+
+### GitHub Actions CI/CD
+
+Add these repository Actions secrets under **Settings > Secrets and variables > Actions**:
+
+| Secret | Value |
+| --- | --- |
+| `EC2_HOST` | EC2 public IPv4 address or DNS name |
+| `EC2_USERNAME` | EC2 SSH login user |
+| `EC2_SSH_KEY` | Private SSH key authorized for that EC2 user |
+
+The application/database settings stay in `/opt/hcp-crm/backend/.env` on EC2 and are not sent through GitHub Actions. On each push to `main`, `.github/workflows/deploy.yml` builds the backend image, connects over SSH, pulls `origin/main`, runs `docker compose up -d --build --remove-orphans`, and retries the existing `/api/health` endpoint. A failed SSH command, Compose deployment, or health check fails the workflow. `workflow_dispatch` is also available for a manual run.
+
+To perform the same update manually on EC2:
+
+```bash
+cd /opt/hcp-crm
+git pull --ff-only origin main
+docker compose up -d --build --remove-orphans
+curl --fail http://127.0.0.1:8000/api/health
+```
+
+### Existing Vercel frontend
+
+Keep the frontend's existing Vercel Git integration. Configure the project with the `frontend` root directory, Vite framework preset, `npm run build` build command, and `dist` output directory. Set `VITE_API_BASE` in Vercel to the EC2 backend base URL without a trailing `/api`; `FRONTEND_ORIGIN` on EC2 must match the deployed frontend origin.

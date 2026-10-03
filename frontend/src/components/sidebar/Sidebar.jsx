@@ -1,15 +1,17 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FiHome, FiEdit3, FiSearch, FiList, FiTrendingUp, FiBarChart2, FiCpu, FiSettings, FiLogOut, FiUser, FiChevronDown } from 'react-icons/fi'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
+import { clearAuth } from '../../store/authSlice'
 
 export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
 
   const mainNavItems = [
     { path: '/dashboard', icon: FiHome, label: 'Dashboard' },
-    { path: '/', icon: FiEdit3, label: 'Log Interaction' },
+    { path: '/log-interaction', icon: FiEdit3, label: 'Log Interaction' },
     { path: '/hcp-search', icon: FiSearch, label: 'HCP Search' },
     { path: '/interactions', icon: FiList, label: 'Interactions' },
   ]
@@ -25,8 +27,10 @@ export default function Sidebar() {
   ]
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    navigate('/login')
+    dispatch(clearAuth())
+    localStorage.removeItem('hcp_crm_guest_user')
+    localStorage.removeItem('hcp_crm_is_guest')
+    navigate('/', { replace: true })
   }
 
   const NavItem = ({ item }) => {

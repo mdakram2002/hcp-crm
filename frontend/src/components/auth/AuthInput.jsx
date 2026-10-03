@@ -31,7 +31,7 @@ const AuthInput = forwardRef(({
         ref={ref}
         type={type}
         placeholder={placeholder}
-        className={`w-full pl-10 pr-4 py-3 border ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-200' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-200'} rounded-lg focus:outline-none focus:ring-2 transition-all duration-200 ${className}`}
+        className={`w-full pl-10 pr-4 py-3 border ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-200' : 'border-gray-200 focus:border-blue-500 focus:ring-blue-200'} rounded-lg focus:outline-none focus:ring-2 transition-all duration-200 text-gray-900 placeholder-gray-400 ${className}`}
         {...props}
       />
       {rightElement && (

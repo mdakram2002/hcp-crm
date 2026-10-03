@@ -5,94 +5,54 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   deploy-backend:
-    name: Deploy Backend to Azure VM
+    name: Deploy Backend to AWS EC2
     runs-on: ubuntu-latest
-    environment:
-      name: production
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Build backend image
+        run: docker build --pull --tag "hcp-crm-backend:${GITHUB_SHA}" ./backend
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/hcp-crm-backend:${{ github.sha }}
-            ${{ secrets.DOCKER_USERNAME }}/hcp-crm-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Set up SSH
+      - name: Load EC2 SSH key
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.AZURE_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Add Azure VM to known hosts
+      - name: Add EC2 host to known hosts
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          ssh-keyscan -H ${{ secrets.AZURE_VM_IP }} >> ~/.ssh/known_hosts
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
-      - name: Deploy to Azure VM
+      - name: Pull latest code and restart Compose services
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
         run: |
-          # Deploy exact SHA-tagged image to Azure VM
-          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_IP }} << 'ENDSSH'
-            # Stop existing container
-            docker stop hcp-crm-backend || true
-            docker rm hcp-crm-backend || true
+          ssh "$EC2_USERNAME@$EC2_HOST" '
+            set -e
+            cd /opt/hcp-crm
+            git pull --ff-only origin main
+            docker compose up -d --build --remove-orphans
 
-            # Pull exact commit image
-            docker pull ${{ secrets.DOCKER_USERNAME }}/hcp-crm-backend:${{ github.sha }}
+            for attempt in $(seq 1 30); do
+              if curl --fail --silent http://127.0.0.1:8000/api/health; then
+                echo "Backend health check passed"
+                exit 0
+              fi
+              echo "Health check attempt $attempt failed; retrying in 5 seconds"
+              sleep 5
+            done
 
-            # Create .env file from secrets
-            cat > .env << ENVEOF
-            DATABASE_URL=${{ secrets.PRODUCTION_DATABASE_URL }}
-            FRONTEND_ORIGIN=${{ secrets.PRODUCTION_FRONTEND_ORIGIN }}
-            GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-            GROQ_MODEL=${{ secrets.GROQ_MODEL || 'llama-3.3-70b-versatile' }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-            JWT_ALGORITHM=HS256
-            JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60
-            ENVEOF
-
-            # Run new container with exact SHA tag
-            docker run -d \
-              --name hcp-crm-backend \
-              --restart unless-stopped \
-              -p 8000:8000 \
-              --env-file .env \
-              ${{ secrets.DOCKER_USERNAME }}/hcp-crm-backend:${{ github.sha }}
-
-            # Wait for container to be healthy
-            echo "Waiting for backend to start..."
-            sleep 10
-          ENDSSH
-
-      - name: Health Check
-        run: |
-          max_attempts=30
-          attempt=0
-          while [ $attempt -lt $max_attempts ]; do
-            if curl -f ${{ secrets.PRODUCTION_API_BASE }}/api/health; then
-              echo "Backend health check passed!"
-              exit 0
-            fi
-            attempt=$((attempt+1))
-            echo "Attempt $attempt failed. Retrying in 10 seconds..."
-            sleep 10
-          done
-          echo "Backend health check failed after $max_attempts attempts"
-          exit 1
+            docker compose ps
+            echo "Backend health check failed"
+            exit 1
+          '
