@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
-import { FiActivity, FiUsers, FiCalendar, FiTrendingUp, FiClock, FiCheckCircle, FiUser } from 'react-icons/fi'
+import { FiActivity, FiUsers, FiCalendar, FiTrendingUp, FiClock, FiCheckCircle, FiSearch, FiUser } from 'react-icons/fi'
 import { BarChart, Bar, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line } from 'recharts'
 import { fetchDashboardSummary } from '../../api/client'
 import { StatCard } from '../ui/StatCard'
 import { Card, CardHeader, CardContent, CardTitle } from '../ui/Card'
+import { Input } from '../ui/Input'
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const user = useSelector((state) => state.auth.user)
 
   useEffect(() => {
@@ -62,6 +64,16 @@ export default function DashboardPage() {
     ]
   }, [summary])
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const filteredRecentInteractions = (summary?.recent_interactions || []).filter((interaction) =>
+    [
+      interaction.hcp_name,
+      interaction.interaction_type,
+      interaction.date,
+      interaction.sentiment,
+    ].some((value) => value?.toLowerCase().includes(normalizedSearchQuery))
+  )
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -84,6 +96,16 @@ export default function DashboardPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-sm text-gray-500 mt-1">Overview of your HCP interactions and activity</p>
+      </div>
+
+      <div className="relative mb-6 max-w-xl">
+        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <Input
+          placeholder="Search dashboard interactions by HCP name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       {/* KPI Cards */}
@@ -163,7 +185,9 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="h-48 overflow-y-auto">
             <div className="space-y-3">
-              {summary?.recent_interactions?.slice(0, 4).map((interaction, index) => (
+              {filteredRecentInteractions.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-500">No recent interactions match your search.</p>
+              ) : filteredRecentInteractions.map((interaction, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">

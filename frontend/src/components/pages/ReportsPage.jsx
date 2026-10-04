@@ -92,6 +92,22 @@ export default function ReportsPage() {
     },
   ]
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const filteredPatientReports = patientReports.filter((report) =>
+    [
+      report.patientName,
+      report.reportType,
+      report.date,
+      report.hcpSpecialty,
+      report.organization,
+      report.topics,
+      report.sentiment,
+      report.outcome,
+      report.followUp,
+      report.status,
+    ].some((value) => value.toLowerCase().includes(normalizedSearchQuery))
+  )
+
   const getSentimentBadge = (sentiment) => {
     const variants = {
       'Positive': 'success',
@@ -197,7 +213,13 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {patientReports.map((report) => (
+                {filteredPatientReports.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
+                      No patient reports match your search.
+                    </td>
+                  </tr>
+                ) : filteredPatientReports.map((report) => (
                   <tr key={report.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">

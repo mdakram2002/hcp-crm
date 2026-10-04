@@ -57,6 +57,20 @@ export default function HCPSearchPage() {
     },
   ]
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const filteredHcps = hcps.filter((hcp) => {
+    const matchesSearch = [
+      hcp.name,
+      hcp.specialty,
+      hcp.organization,
+      hcp.location,
+    ].some((value) => value.toLowerCase().includes(normalizedSearchQuery))
+    const matchesSpecialty = selectedSpecialty === 'All' || hcp.specialty === selectedSpecialty
+    const matchesLocation = selectedLocation === 'All' || hcp.location === selectedLocation
+
+    return matchesSearch && matchesSpecialty && matchesLocation
+  })
+
   const getSentimentBadge = (sentiment) => {
     const variants = {
       'Positive': 'success',
@@ -113,7 +127,9 @@ export default function HCPSearchPage() {
 
       {/* HCP Results Grid */}
       <div className="grid grid-cols-2 gap-4 h-[calc(100vh-320px)] overflow-y-auto">
-        {hcps.map((hcp) => (
+        {filteredHcps.length === 0 ? (
+          <p className="col-span-2 py-8 text-center text-sm text-gray-500">No HCPs match your search.</p>
+        ) : filteredHcps.map((hcp) => (
           <Card key={hcp.id} className="hover:shadow-md transition-shadow cursor-pointer">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">

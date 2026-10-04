@@ -72,6 +72,20 @@ export default function InteractionsPage() {
     },
   ]
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const filteredInteractions = interactions.filter((interaction) =>
+    [
+      interaction.hcp,
+      interaction.date,
+      interaction.type,
+      interaction.topics,
+      interaction.sentiment,
+      interaction.outcome,
+      interaction.followUp,
+      interaction.status,
+    ].some((value) => value.toLowerCase().includes(normalizedSearchQuery))
+  )
+
   const getSentimentBadge = (sentiment) => {
     const variants = {
       'Positive': 'success',
@@ -165,7 +179,13 @@ export default function InteractionsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {interactions.map((interaction) => (
+                {filteredInteractions.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
+                      No interactions match your search.
+                    </td>
+                  </tr>
+                ) : filteredInteractions.map((interaction) => (
                   <tr key={interaction.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
